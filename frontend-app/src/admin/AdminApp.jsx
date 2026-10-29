@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './AdminApp.css'
 
 const navigation = [
@@ -167,6 +167,78 @@ function TemplatesPage() {
   const [category, setCategory] = useState('all')
   const [showForm, setShowForm] = useState(false)
   const [notice, setNotice] = useState('')
+  const addButtonRef = useRef(null)
+  const modalRef = useRef(null)
+
+  useEffect(() => {
+    if (!showForm) return
+
+    const modal = modalRef.current
+
+    if (!modal) return
+
+    const focusableSelector = [
+      'a[href]',
+      'button:not([disabled])',
+      'input:not([disabled])',
+      'select:not([disabled])',
+      'textarea:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(', ')
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setShowForm(false)
+        return
+      }
+
+      if (event.key !== 'Tab') return
+
+      const focusableElements = Array.from(
+        modal.querySelectorAll(focusableSelector)
+      ).filter((element) => element.getClientRects().length > 0)
+
+      if (focusableElements.length === 0) {
+        event.preventDefault()
+        modal.focus()
+        return
+      }
+
+      const firstElement = focusableElements[0]
+      const lastElement = focusableElements[focusableElements.length - 1]
+
+      if (
+        event.shiftKey &&
+        (document.activeElement === firstElement ||
+          !modal.contains(document.activeElement))
+      ) {
+        event.preventDefault()
+        lastElement.focus()
+      } else if (
+        !event.shiftKey &&
+        (document.activeElement === lastElement ||
+          !modal.contains(document.activeElement))
+      ) {
+        event.preventDefault()
+        firstElement.focus()
+      }
+    }
+
+    const firstInput = modal.querySelector(
+      'input:not([disabled]), select:not([disabled]), textarea:not([disabled])'
+    )
+
+    firstInput?.focus()
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+    document.removeEventListener('keydown', handleKeyDown)
+    addButtonRef.current?.focus()
+    }
+  }, [showForm])
+
 
   function closeForm() {
     setShowForm(false)
@@ -195,11 +267,13 @@ function TemplatesPage() {
 
         <button
           type="button"
+            ref={addButtonRef}
           className="admin-template-add"
           onClick={() => {
             setNotice('')
             setShowForm(true)
           }}
+          
         >
           <span aria-hidden="true">+</span>
           Tambah template
@@ -305,7 +379,14 @@ function TemplatesPage() {
             if (event.target === event.currentTarget) closeForm()
           }}
         >
-          <section className="admin-template-modal" role="dialog" aria-modal="true" aria-labelledby="admin-template-form-title">
+         <section
+            ref={modalRef}
+            className="admin-template-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-template-form-title"
+            tabIndex={-1}
+        >
             <div className="admin-template-modal-header">
               <div>
                 <span className="admin-eyebrow">CONTENT MANAGEMENT</span>
@@ -487,6 +568,114 @@ function EventsPage() {
 }
 
 
+function AdminLoginPage() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [notice, setNotice] = useState('')
+
+  function handleSubmit(event) {
+    event.preventDefault()
+
+    setNotice(
+      'Login belum dapat dilakukan karena autentikasi backend belum terhubung.'
+    )
+  }
+
+  return (
+        <main className="admin-login-page">
+        <div className="admin-welcome-art" aria-hidden="true">
+    <div className="admin-art-sun" />
+    <div className="admin-art-card admin-art-card-one">
+        <span>J</span>
+        <small>YOUR MOMENT</small>
+    </div>
+    <div className="admin-art-card admin-art-card-two">
+        <span>+</span>
+    </div>
+    <div className="admin-art-caption">MAKE IT MEMORABLE</div>
+    </div>
+      <section
+        className="admin-login-card"
+        aria-labelledby="admin-login-title"
+      >
+    
+        <a className="admin-login-brand" href="/admin/login">
+        <span className="admin-login-brand-icon" aria-hidden="true">
+            <span className="admin-brand-camera">
+            <span className="admin-brand-lens" />
+            </span>
+        </span>
+        <span className="admin-login-brand-name">
+            Jepret<span>.in</span>
+        </span>
+        </a>
+
+
+        <div className="admin-login-heading">
+          <p className="admin-login-eyebrow">ADMINISTRATION</p>
+          <h1 id="admin-login-title">Selamat datang kembali!</h1>
+          <p>
+            Masuk ke ruang admin untuk mengelola layanan Jepret.in.
+          </p>
+        </div>
+
+        <form className="admin-login-form" onSubmit={handleSubmit}>
+          <div className="admin-login-field">
+            <label htmlFor="admin-login-email">Email admin</label>
+            <input
+              id="admin-login-email"
+              type="email"
+              autoComplete="username"
+              placeholder="admin@contoh.com"
+              value={email}
+              onChange={(event) => {
+                setEmail(event.target.value)
+                setNotice('')
+              }}
+              required
+            />
+          </div>
+
+          <div className="admin-login-field">
+            <label htmlFor="admin-login-password">Password</label>
+            <input
+              id="admin-login-password"
+              type="password"
+              autoComplete="current-password"
+              placeholder="Masukkan password"
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value)
+                setNotice('')
+              }}
+              required
+            />
+          </div>
+
+          <button className="admin-login-submit" type="submit">
+            Masuk sebagai Admin
+          </button>
+
+          {notice && (
+            <p className="admin-login-notice" role="status">
+              {notice}
+            </p>
+          )}
+        </form>
+
+        <a className="admin-login-back" href="/">
+          Kembali ke halaman utama
+        </a>
+
+        <p className="admin-login-footnote">
+          Akses khusus pengelola Jepret.in
+        </p>
+      </section>
+    </main>
+  )
+}
+
+
 export default function AdminApp() {
   const getPageFromUrl = () => {
     const path = window.location.pathname.replace(/\/+$/, '') || '/'
@@ -494,7 +683,15 @@ export default function AdminApp() {
     if (path === '/admin/templates') return 'templates'
     if (path === '/admin/events') return 'events'
 
-    return 'dashboard'
+        return 'dashboard'
+
+        const isLoginRoute =
+    window.location.pathname.replace(/\/+$/, '') === '/admin/login'
+
+    if (isLoginRoute) {
+    return <AdminLoginPage />
+    }
+
   }
 
   const [activePage, setActivePage] = useState(getPageFromUrl)
@@ -528,6 +725,12 @@ export default function AdminApp() {
     setSidebarOpen(false)
   }
 
+  const isLoginRoute =
+  window.location.pathname.replace(/\/+$/, '') === '/admin/login'
+
+    if (isLoginRoute) {
+    return <AdminLoginPage />
+    }
 
   return (
     <div className="jepret-admin">

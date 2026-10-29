@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
 
@@ -98,7 +97,10 @@ export default function App() {
   const [cameraRetry, setCameraRetry] = useState(0)
   const [finalPhoto, setFinalPhoto] = useState('')
   const [requestSent, setRequestSent] = useState(false)
-
+  const [selectedPlan, setSelectedPlan] = useState(null)
+  const [checkoutMessage, setCheckoutMessage] = useState('')
+  const [showPaymentStep, setShowPaymentStep] = useState(false)
+  
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const canvasRef = useRef(null)
@@ -607,10 +609,16 @@ export default function App() {
   return (
     <main className="website">
       <nav className="navbar">
-        <a className="brand" href="#home">
-          <span className="brand-icon">♡</span>
-          <span>Jepret<span className="pink">.in</span></span>
-        </a>
+      <a className="brand" href="#home">
+        <span className="brand-icon">
+          <span className="admin-brand-camera">
+            <span className="admin-brand-lens"></span>
+          </span>
+        </span>
+        <span>Jepret<span className="pink">.in</span></span>
+      </a>
+
+
 
         <div className="nav-links">
           <a href="#home">Home</a>
@@ -842,49 +850,41 @@ export default function App() {
           <span className="section-label">CUSTOM PHOTObOOTH</span>
           <h2>Make your event <span>special</span> ♡</h2>
           <p>Buat photobooth khusus untuk acara spesialmu!</p>
+          
+            <form className="event-request-form" onSubmit={(event) => {
+        event.preventDefault()
+        setCheckoutMessage(
+          'Data checkout berhasil divalidasi. Pembayaran belum dilakukan karena integrasi pembayaran belum tersedia.'
+        )
+      }}>
+        <div className="checkout-field">
+          <label htmlFor="checkout-name">Nama lengkap</label>
+          <input
+            id="checkout-name"
+            name="name"
+            placeholder="Masukkan nama lengkap"
+            autoComplete="name"
+            required
+          />
+        </div>
 
-          <form
-            className="event-request-form"
-            onSubmit={(event) => {
-              event.preventDefault()
-              setRequestSent(true)
-            }}
-          >
-            <input
-              name="name"
-              placeholder="Nama kamu"
-              required
-            />
+        <div className="checkout-field">
+          <label htmlFor="checkout-email">Email</label>
+          <input
+            id="checkout-email"
+            name="email"
+            type="email"
+            placeholder="Masukkan email aktif"
+            autoComplete="email"
+            required
+          />
+        </div>
 
-            <input
-              name="email"
-              type="email"
-              placeholder="Email kamu"
-              required
-            />
+        <button type="submit" className="primary-button">
+          Lanjut ke Pembayaran
+        </button>
+      </form>
 
-            <select name="eventType" defaultValue="" required>
-              <option value="" disabled>
-                Pilih jenis acara
-              </option>
-              <option value="Ulang tahun">Ulang tahun</option>
-              <option value="Wisuda">Wisuda</option>
-              <option value="Pernikahan">Pernikahan</option>
-              <option value="Gathering">Gathering</option>
-              <option value="Lainnya">Lainnya</option>
-            </select>
-
-            <textarea
-              name="details"
-              placeholder="Ceritakan konsep acara yang kamu inginkan"
-              rows="4"
-              required
-            />
-
-            <button type="submit" className="primary-button">
-              Kirim Request ♡
-            </button>
-          </form>
 
           {requestSent && (
             <p role="status">
@@ -903,20 +903,48 @@ export default function App() {
 
         <div className="pricing-grid">
           <article className="pricing-card">
-            <h3>Free</h3>
-            <p className="price">Rp0</p>
-            <p>✓ Pilihan template yang tersedia</p>
-            <p>✓ Empat foto setiap sesi</p>
-            <p>✓ Download photostrip</p>
+  <h3>Basic</h3>
+  <p className="price">Rp9.900</p>
+  <p>✓ Semua fitur Free</p>
+  <p>✓ Pilihan frame eksklusif</p>
+  <p>✓ Variasi photostrip tambahan</p>
 
-            <button
-              type="button"
-              className="primary-button"
-              onClick={scrollToTemplates}
-            >
-              Mulai Gratis
-            </button>
-          </article>
+  <button
+    type="button"
+    className="primary-button"
+    onClick={() => {
+      setSelectedPlan({ name: 'Basic', price: 9900 })
+      setCheckoutMessage('')
+      document.getElementById('checkout')?.scrollIntoView({
+        behavior: 'smooth',
+      })
+    }}
+  >
+        Pilih Basic
+      </button>
+    </article>
+
+    <article className="pricing-card">
+      <h3>Premium</h3>
+      <p className="price">Rp19.900</p>
+      <p>✓ Semua fitur Basic</p>
+      <p>✓ Tema premium</p>
+      <p>✓ Kustomisasi photostrip</p>
+
+      <button
+        type="button"
+        className="primary-button"
+        onClick={() => {
+          setSelectedPlan({ name: 'Premium', price: 19900 })
+          setCheckoutMessage('')
+          document.getElementById('checkout')?.scrollIntoView({
+            behavior: 'smooth',
+          })
+        }}
+      >
+        Pilih Premium
+      </button>
+    </article>
 
           <article className="pricing-card">
             <h3>Custom Event</h3>
@@ -934,6 +962,138 @@ export default function App() {
         <p className="pricing-note">
           Harga layanan custom dikonfirmasi sesuai kebutuhan acara.
         </p>
+
+
+{selectedPlan && (
+  <section id="checkout" className="checkout-screen">
+    <div className="custom-content checkout-layout">
+     <button
+      type="button"
+      className="checkout-close-button"
+      aria-label="Tutup checkout"
+      onClick={() => {
+        setSelectedPlan(null)
+        setCheckoutMessage('')
+        setShowPaymentStep(false)
+      }}
+    >
+      ×
+    </button>
+
+      <div className="checkout-heading">
+        
+        <span className="section-label">CHECKOUT</span>
+        <h2>Selesaikan <span>Pesananmu</span></h2>
+        <p>Periksa detail pesanan sebelum melanjutkan.</p>
+      </div>
+
+      <div className="checkout-columns">
+        {/* KOLOM KIRI: DATA PEMESAN */}
+        <div className="checkout-left">
+          <h3 className="checkout-subtitle">Data Pemesan</h3>
+
+          <form
+            id="checkout-form"
+            className="event-request-form"
+            onSubmit={(event) => {
+              event.preventDefault()
+              setCheckoutMessage('')
+              setShowPaymentStep(true)
+            }}
+          >
+            <div className="checkout-field">
+              <label htmlFor="checkout-name">Nama lengkap</label>
+              <input
+                id="checkout-name"
+                name="name"
+                placeholder="Masukkan nama lengkap"
+                autoComplete="name"
+                required
+              />
+            </div>
+
+            <div className="checkout-field">
+              <label htmlFor="checkout-email">Email</label>
+              <input
+                id="checkout-email"
+                name="email"
+                type="email"
+                placeholder="Masukkan email aktif"
+                autoComplete="email"
+                required
+              />
+            </div>
+
+            <button type="submit" className="primary-button">
+              Lanjut ke Pembayaran
+            </button>
+          </form>
+
+          {checkoutMessage && (
+            <p role="status">{checkoutMessage}</p>
+          )}
+        </div>
+
+        {/* KOLOM KANAN: RINGKASAN DAN PEMBAYARAN */}
+        <div className="checkout-right">
+          <h3 className="checkout-subtitle">Ringkasan Pesanan</h3>
+
+          <div className="pricing-card">
+            <h3>{selectedPlan.name}</h3>
+            <p className="price">
+              Rp{selectedPlan.price.toLocaleString('id-ID')}
+            </p>
+            <p>Photobooth digital Jepret.in</p>
+            <div className="checkout-total">
+              <span>Total pembayaran</span>
+              <strong>
+                Rp{selectedPlan.price.toLocaleString('id-ID')}
+              </strong>
+            </div>
+          </div>
+
+          {showPaymentStep && (
+            <div className="checkout-payment" aria-live="polite">
+              <h3>Pembayaran QRIS</h3>
+
+              <div className="checkout-qr-placeholder">
+                <span className="checkout-qr-icon">
+                  <icon name="qr-code" size="3xl" />
+                </span>
+                <p>QRIS akan ditampilkan di sini</p>
+                <small>
+                  Integrasi pembayaran belum tersedia.
+                  Belum ada transaksi yang dilakukan.
+                </small>
+              </div>
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="primary-button checkout-back-button"
+            onClick={() => {
+              setSelectedPlan(null)
+              setCheckoutMessage('')
+              setShowPaymentStep(false)
+
+              requestAnimationFrame(() => {
+                document.getElementById('pricing')?.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'start',
+                })
+              })
+            }}
+          >
+            Kembali ke Paket
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+)}
+
+
       </section>
 
       {/* FOOTER: tag pembuka dan penutup sudah benar */}
