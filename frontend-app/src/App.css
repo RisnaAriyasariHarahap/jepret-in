@@ -3924,3 +3924,25 @@ nav .brand,
     right: -12px;
   }
 }
+
+/* ===== TEASER CUSTOM EVENT DI LANDING ===== */
+.custom-section.custom-cta {
+  text-align: left;
+}
+
+.custom-section.custom-cta .custom-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.custom-section.custom-cta .custom-content h2 {
+  margin-top: 12px;
+}
+
+@media (max-width: 860px) {
+  .custom-section.custom-cta {
+    grid-template-columns: 1fr;
+  }
+}

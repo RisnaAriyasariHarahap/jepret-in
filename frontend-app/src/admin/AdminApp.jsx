@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import './AdminApp.css'
+import { apiFetch, getSession, saveSession, clearSession } from '../api.js'
 
 const navigation = [
   { id: 'dashboard', label: 'Dashboard', icon: '▦' },
@@ -572,13 +573,36 @@ function AdminLoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [notice, setNotice] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
+    setLoading(true)
+    setNotice('')
 
-    setNotice(
-      'Login belum dapat dilakukan karena autentikasi backend belum terhubung.'
-    )
+    try {
+      const result = await apiFetch('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      })
+
+      if (result.profile?.role !== 'admin') {
+        await apiFetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${result.session.accessToken}` },
+        }).catch(() => {})
+
+        setNotice('Akun ini tidak memiliki akses admin.')
+        return
+      }
+
+      saveSession({ ...result.session, profile: result.profile })
+      window.location.href = '/admin'
+    } catch (error) {
+      setNotice(error.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -652,8 +676,8 @@ function AdminLoginPage() {
             />
           </div>
 
-          <button className="admin-login-submit" type="submit">
-            Masuk sebagai Admin
+          <button className="admin-login-submit" type="submit" disabled={loading}>
+            {loading ? 'Memproses...' : 'Masuk sebagai Admin'}
           </button>
 
           {notice && (
@@ -684,19 +708,54 @@ export default function AdminApp() {
     if (path === '/admin/events') return 'events'
 
         return 'dashboard'
-
-        const isLoginRoute =
-    window.location.pathname.replace(/\/+$/, '') === '/admin/login'
-
-    if (isLoginRoute) {
-    return <AdminLoginPage />
-    }
-
   }
 
   const [activePage, setActivePage] = useState(getPageFromUrl)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const currentPage = pageInfo[activePage]
+  const [authChecked, setAuthChecked] = useState(false)
+
+  useEffect(() => {
+    const onLoginRoute =
+      window.location.pathname.replace(/\/+$/, '') === '/admin/login'
+
+    if (onLoginRoute) return
+
+    let cancelled = false
+
+    async function checkAdmin() {
+      if (!getSession()?.accessToken) {
+        window.location.replace('/admin/login')
+        return
+      }
+
+      try {
+        await apiFetch('/api/admin/me')
+
+        if (!cancelled) setAuthChecked(true)
+      } catch {
+        clearSession()
+        window.location.replace('/admin/login')
+      }
+    }
+
+    checkAdmin()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function handleLogout() {
+    try {
+      await apiFetch('/api/auth/logout', { method: 'POST' })
+    } catch {
+      // tetap lanjut keluar walaupun token sudah tidak valid
+    }
+
+    clearSession()
+    window.location.replace('/admin/login')
+  }
 
   useEffect(() => {
     function handlePopState() {
@@ -730,6 +789,10 @@ export default function AdminApp() {
 
     if (isLoginRoute) {
     return <AdminLoginPage />
+    }
+
+    if (!authChecked) {
+      return <p style={{ padding: 24 }}>Memeriksa akses admin...</p>
     }
 
   return (
@@ -789,7 +852,7 @@ export default function AdminApp() {
               <strong>Administrator</strong>
               <small>Admin workspace</small>
             </div>
-            <span className="admin-profile-menu" aria-hidden="true">···</span>
+              <button type="button" className="admin-profile-menu" onClick={handleLogout} title="Keluar" aria-label="Keluar dari admin">⎋</button>
           </div>
         </div>
       </aside>

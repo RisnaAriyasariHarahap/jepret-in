@@ -810,3 +810,11 @@
 .admin-login-brand-name > span {
   color: #d7668b;
 }
+
+button.admin-profile-menu {
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
