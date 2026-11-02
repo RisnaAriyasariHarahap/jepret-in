@@ -1,23 +1,106 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { apiFetch } from '../../api.js'
+import { useAuth } from '../../context/AuthContext.jsx'
+import { payWithSnap } from '../../utils/midtrans.js'
+
+const premiumFeatures = [
+  'Semua fitur Free',
+  'Tema premium',
+  'Kustomisasi photostrip',
+]
+
+function formatPrice(price) {
+  return `Rp${Number(price).toLocaleString('id-ID')}`
+}
 
 export default function Pricing() {
-  const [selectedPlan, setSelectedPlan] = useState(null)
-  const [checkoutMessage, setCheckoutMessage] = useState('')
-  const [showPaymentStep, setShowPaymentStep] = useState(false)
+  const { profile, isLoggedIn, openAuth, updateProfile } = useAuth()
+  const [plans, setPlans] = useState([])
+  const [paying, setPaying] = useState(false)
+  const [message, setMessage] = useState('')
 
-  function chooseShortcut(plan) {
-    setSelectedPlan(plan)
-    setCheckoutMessage('')
-    document.getElementById('checkout')?.scrollIntoView({
-      behavior: 'smooth',
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadPlans() {
+      try {
+        const result = await apiFetch('/api/plans')
+
+        if (!cancelled && Array.isArray(result.data)) {
+          setPlans(result.data)
+        }
+      } catch {
+        // harga bawaan tetap ditampilkan jika backend belum aktif
+      }
+    }
+
+    loadPlans()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const premiumPlan = plans.find((plan) => plan.id === 'premium')
+
+  const premiumPrice = premiumPlan?.price ?? 19900
+  const premiumDays = premiumPlan?.durationDays ?? 30
+
+  async function checkStatus(orderId) {
+    const result = await apiFetch(`/api/transactions/${orderId}/sync`, {
+      method: 'POST',
     })
+
+    updateProfile(result.data.profile)
+
+    return result.data.status
   }
 
-  function closeCheckout() {
-    setSelectedPlan(null)
-    setCheckoutMessage('')
-    setShowPaymentStep(false)
+  async function handleBuyPremium() {
+    setMessage('')
+
+    if (!isLoggedIn) {
+      openAuth('login')
+      return
+    }
+
+    setPaying(true)
+
+    try {
+      const created = await apiFetch('/api/transactions', {
+        method: 'POST',
+        body: JSON.stringify({ planId: 'premium' }),
+      })
+
+      const { orderId, token, snapJsUrl, clientKey } = created.data
+
+      await payWithSnap({ token, snapJsUrl, clientKey })
+
+      const status = await checkStatus(orderId)
+
+      if (status === 'settlement') {
+        setMessage('Pembayaran berhasil! Akun kamu sekarang Premium. ✨')
+      } else if (status === 'pending') {
+        setMessage(
+          'Pembayaran belum selesai. Selesaikan pembayaran, lalu klik tombol Premium lagi untuk memeriksa status.'
+        )
+      } else {
+        setMessage('Pembayaran tidak berhasil atau dibatalkan. Silakan coba lagi.')
+      }
+    } catch (error) {
+      setMessage(error.message || 'Terjadi kesalahan saat memproses pembayaran.')
+    } finally {
+      setPaying(false)
+    }
   }
+
+  const premiumUntil = profile?.premiumUntil
+    ? new Date(profile.premiumUntil).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+    : ''
 
   return (
     <section id="pricing" className="pricing-section">
@@ -28,34 +111,44 @@ export default function Pricing() {
 
       <div className="pricing-grid">
         <article className="pricing-card">
-          <h3>Basic</h3>
-          <p className="price">Rp9.900</p>
-          <p>✓ Semua fitur Free</p>
-          <p>✓ Pilihan frame eksklusif</p>
-          <p>✓ Variasi photostrip tambahan</p>
+          <h3>Free</h3>
+          <p className="price">Rp0</p>
+          <p>✓ Photo booth berbasis web</p>
+          <p>✓ Template dasar</p>
+          <p>✓ Download hasil foto</p>
 
           <button
             type="button"
             className="primary-button"
-            onClick={() => chooseShortcut({ name: 'Basic', price: 9900 })}
+            onClick={() => document.getElementById('templates')?.scrollIntoView({ behavior: 'smooth' })}
           >
-            Pilih Basic
+            Coba Gratis
           </button>
         </article>
 
         <article className="pricing-card">
           <h3>Premium</h3>
-          <p className="price">Rp19.900</p>
-          <p>✓ Semua fitur Basic</p>
-          <p>✓ Tema premium</p>
-          <p>✓ Kustomisasi photostrip</p>
+          <p className="price">{formatPrice(premiumPrice)}</p>
+          <p>{premiumDays} hari akses</p>
+          {premiumFeatures.map((feature) => (
+            <p key={feature}>✓ {feature}</p>
+          ))}
+
+          {profile?.isPremium ? (
+            <p className="premium-active">Premium aktif sampai {premiumUntil}</p>
+          ) : null}
 
           <button
             type="button"
             className="primary-button"
-            onClick={() => chooseShortcut({ name: 'Premium', price: 19900 })}
+            disabled={paying}
+            onClick={handleBuyPremium}
           >
-            Pilih Premium
+            {paying
+              ? 'Memproses...'
+              : profile?.isPremium
+                ? 'Perpanjang Premium'
+                : 'Pilih Premium'}
           </button>
         </article>
 
@@ -72,131 +165,15 @@ export default function Pricing() {
         </article>
       </div>
 
+      {message && (
+        <p className="pricing-note premium-message" role="status">
+          {message}
+        </p>
+      )}
+
       <p className="pricing-note">
         Harga layanan custom dikonfirmasi sesuai kebutuhan acara.
       </p>
-
-      {selectedPlan && (
-        <section id="checkout" className="checkout-screen">
-          <div className="custom-content checkout-layout">
-            <button
-              type="button"
-              className="checkout-close-button"
-              aria-label="Tutup checkout"
-              onClick={closeCheckout}
-            >
-              ×
-            </button>
-
-            <div className="checkout-heading">
-              <span className="section-label">CHECKOUT</span>
-              <h2>Selesaikan <span>Pesananmu</span></h2>
-              <p>Periksa detail pesanan sebelum melanjutkan.</p>
-            </div>
-
-            <div className="checkout-columns">
-              {/* KOLOM KIRI: DATA PEMESAN */}
-              <div className="checkout-left">
-                <h3 className="checkout-subtitle">Data Pemesan</h3>
-
-                <form
-                  id="checkout-form"
-                  className="event-request-form"
-                  onSubmit={(event) => {
-                    event.preventDefault()
-                    setCheckoutMessage('')
-                    setShowPaymentStep(true)
-                  }}
-                >
-                  <div className="checkout-field">
-                    <label htmlFor="checkout-name">Nama lengkap</label>
-                    <input
-                      id="checkout-name"
-                      name="name"
-                      placeholder="Masukkan nama lengkap"
-                      autoComplete="name"
-                      required
-                    />
-                  </div>
-
-                  <div className="checkout-field">
-                    <label htmlFor="checkout-email">Email</label>
-                    <input
-                      id="checkout-email"
-                      name="email"
-                      type="email"
-                      placeholder="Masukkan email aktif"
-                      autoComplete="email"
-                      required
-                    />
-                  </div>
-
-                  <button type="submit" className="primary-button">
-                    Lanjut ke Pembayaran
-                  </button>
-                </form>
-
-                {checkoutMessage && (
-                  <p role="status">{checkoutMessage}</p>
-                )}
-              </div>
-
-              {/* KOLOM KANAN: RINGKASAN DAN PEMBAYARAN */}
-              <div className="checkout-right">
-                <h3 className="checkout-subtitle">Ringkasan Pesanan</h3>
-
-                <div className="pricing-card">
-                  <h3>{selectedPlan.name}</h3>
-                  <p className="price">
-                    Rp{selectedPlan.price.toLocaleString('id-ID')}
-                  </p>
-                  <p>Photobooth digital Jepret.in</p>
-                  <div className="checkout-total">
-                    <span>Total pembayaran</span>
-                    <strong>
-                      Rp{selectedPlan.price.toLocaleString('id-ID')}
-                    </strong>
-                  </div>
-                </div>
-
-                {showPaymentStep && (
-                  <div className="checkout-payment" aria-live="polite">
-                    <h3>Pembayaran QRIS</h3>
-
-                    <div className="checkout-qr-placeholder">
-                      <span className="checkout-qr-icon">
-                        <icon name="qr-code" size="3xl" />
-                      </span>
-                      <p>QRIS akan ditampilkan di sini</p>
-                      <small>
-                        Integrasi pembayaran belum tersedia.
-                        Belum ada transaksi yang dilakukan.
-                      </small>
-                    </div>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  className="primary-button checkout-back-button"
-                  onClick={() => {
-                    closeCheckout()
-
-                    requestAnimationFrame(() => {
-                      document.getElementById('pricing')?.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start',
-                      })
-                    })
-                  }}
-                >
-                  Kembali ke Paket
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
     </section>
   )
 }

@@ -5,6 +5,7 @@ import App from './App.jsx'
 import './App.css'
 import AdminApp from './admin/AdminApp.jsx'
 import CustomEventPage from './pages/CustomEventPage.jsx'
+import { AuthProvider } from './context/AuthContext.jsx'
 
 const currentPath = window.location.pathname.replace(/\/+$/, '') || '/'
 
@@ -20,5 +21,7 @@ function renderPage() {
 }
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>{renderPage()}</StrictMode>,
+  <StrictMode>
+    <AuthProvider>{renderPage()}</AuthProvider>
+  </StrictMode>,
 )

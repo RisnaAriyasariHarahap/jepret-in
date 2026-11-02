@@ -3946,3 +3946,112 @@ nav .brand,
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== LOGIN / DAFTAR PENGGUNA ===== */
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.nav-auth {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #6b4a58;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.nav-auth span {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-auth-button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid #ecc3d1;
+  border-radius: 30px;
+  color: #b0527a;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.nav-auth-button:hover {
+  background: #fff0f5;
+}
+
+.navbar {
+  gap: 18px;
+}
+
+.nav-links a {
+  white-space: nowrap;
+}
+
+.auth-panel {
+  max-width: 440px;
+}
+
+.auth-form {
+  margin: 8px auto 0;
+}
+
+.auth-message {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #8c4d66;
+  background: #fff0f5;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.auth-error {
+  color: #a8344f;
+  background: #fde6ea;
+}
+
+.auth-switch {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.auth-switch-button {
+  padding: 0;
+  border: 0;
+  color: #c0537f;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 1180px) {
+  .nav-auth span {
+    display: none;
+  }
+}
+
+.premium-active {
+  font-weight: 700;
+  color: #b4236b;
+}
+
+.premium-message {
+  font-weight: 600;
+}
+
+.pricing-card .primary-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}

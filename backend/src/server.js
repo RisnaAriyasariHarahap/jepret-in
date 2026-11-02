@@ -6,6 +6,9 @@ import templatesRouter from './routes/templates.js'
 import authRouter from './routes/auth.js'
 import adminRouter from './routes/admin.js'
 import customEventsRouter from './routes/customEvents.js'
+import plansRouter from './routes/plans.js'
+import transactionsRouter from './routes/transactions.js'
+import midtransRouter from './routes/midtrans.js'
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -32,6 +35,9 @@ app.use('/api/templates', templatesRouter)
 app.use('/api/auth', authRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/custom-events', customEventsRouter)
+app.use('/api/plans', plansRouter)
+app.use('/api/transactions', transactionsRouter)
+app.use('/api/midtrans', midtransRouter)
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
