@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { categories } from '../../data/templates.js'
+import TemplatePreview from './TemplatePreview.jsx'
 
 export default function TemplatesSection({
   templates,
@@ -9,6 +9,8 @@ export default function TemplatesSection({
   onStart,
 }) {
   const [selectedCategory, setSelectedCategory] = useState('Semua')
+
+  const categories = ['Semua', ...new Set(templates.map((template) => template.category))]
 
   const visibleTemplates = templates
     .map((template, index) => ({ ...template, index }))
@@ -55,15 +57,28 @@ export default function TemplatesSection({
             }`}
             onClick={() => onSelect(template.index)}
           >
-            <div className="template-art">
+            <div
+              className="template-art"
+              style={template.config ? { background: template.background } : undefined}
+            >
               <span className="template-tag">{template.tag}</span>
 
-              <div className="mini-strip">
-                <div>♡</div>
-                <div>✿</div>
-                <div>✧</div>
-                <div className="mini-strip-label">JEPRET.IN</div>
-              </div>
+              {template.isPremium && (
+                <span className="template-premium-badge">
+                  {template.locked ? '🔒' : '👑'} PREMIUM
+                </span>
+              )}
+
+              {template.config ? (
+                <TemplatePreview template={template} />
+              ) : (
+                <div className="mini-strip">
+                  <div>♡</div>
+                  <div>✿</div>
+                  <div>✧</div>
+                  <div className="mini-strip-label">JEPRET.IN</div>
+                </div>
+              )}
 
               <span className="art-sparkle">✧</span>
             </div>
@@ -87,12 +102,16 @@ export default function TemplatesSection({
           <div className="selected-indicator">♡</div>
           <div>
             <strong>{activeTemplate.name}</strong>
-            <p>Template pilihanmu siap digunakan.</p>
+            <p>
+              {activeTemplate.locked
+                ? 'Template ini khusus pengguna Premium.'
+                : 'Template pilihanmu siap digunakan.'}
+            </p>
           </div>
         </div>
 
         <button className="primary-button" onClick={onStart}>
-          Mulai Foto →
+          {activeTemplate.locked ? '🔒 Buka dengan Premium' : 'Mulai Foto →'}
         </button>
       </div>
     </section>

@@ -1,3 +1,5 @@
+import { buildConfiguredPhotostrip } from './stripRenderer.js'
+
 export function drawDecoration(context, template, width, height) {
   const accent = template.accent
   const kind = template.className
@@ -132,6 +134,10 @@ export function drawDecoration(context, template, width, height) {
 }
 
 export async function buildPhotostrip(photos, template) {
+  if (template.config) {
+    return buildConfiguredPhotostrip(photos, template)
+  }
+  
   const canvas = document.createElement('canvas')
   const context = canvas.getContext('2d')
 

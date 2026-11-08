@@ -5,8 +5,8 @@ import { payWithSnap } from '../../utils/midtrans.js'
 
 const premiumFeatures = [
   'Semua fitur Free',
-  'Tema premium',
-  'Kustomisasi photostrip',
+  'Template premium bermotif & penuh stiker',
+  'Filter wajah (kacamata, bando, telinga, dll)',
 ]
 
 function formatPrice(price) {

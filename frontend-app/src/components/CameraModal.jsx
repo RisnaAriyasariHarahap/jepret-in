@@ -1,7 +1,14 @@
-export default function CameraModal({ camera, activeTemplate }) {
+import { FILTERS } from '../utils/faceFilters.js'
+
+export default function CameraModal({ camera, activeTemplate, canUseFilters, onNeedPremium }) {
   const {
     videoRef,
     canvasRef,
+    overlayRef,
+    filterId,
+    setFilterId,  
+    filterStatus,
+    faceFound,
     cameraLoading,
     cameraError,
     photos,
@@ -61,6 +68,8 @@ export default function CameraModal({ camera, activeTemplate }) {
                 playsInline
               />
 
+              <canvas ref={overlayRef} className="filter-overlay" />
+
               {!cameraLoading && !cameraError && (
                 <div className="camera-live-label">
                   <span />
@@ -82,6 +91,51 @@ export default function CameraModal({ camera, activeTemplate }) {
             </>
           )}
         </div>
+
+        {!finalPhoto && (
+          <div className="filter-picker">
+            <div className="filter-row">
+              {FILTERS.map((filter) => {
+                const locked = !canUseFilters && filter.id !== 'none'
+
+                return (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    className={`filter-chip ${
+                      filterId === filter.id && !locked ? 'active' : ''
+                    } ${locked ? 'locked' : ''}`}
+                    onClick={() => (locked ? onNeedPremium() : setFilterId(filter.id))}
+                    disabled={counting}
+                    title={locked ? 'Khusus Premium' : filter.name}
+                  >
+                    <span className="filter-icon">{filter.icon}</span>
+                    <span>{filter.name}</span>
+                    {locked && <span className="filter-lock">🔒</span>}
+                  </button>
+                )
+              })}
+            </div>
+
+            {!canUseFilters && (
+              <p className="filter-hint">Filter wajah khusus Premium 🔒</p>
+            )}
+
+            {canUseFilters && filterId !== 'none' && filterStatus === 'loading' && (
+              <p className="filter-hint">Memuat filter wajah...</p>
+            )}
+
+            {canUseFilters && filterId !== 'none' && filterStatus === 'error' && (
+              <p className="filter-hint">
+                Filter wajah tidak dapat dimuat (periksa koneksi). Foto tetap bisa diambil tanpa filter.
+              </p>
+            )}
+
+            {canUseFilters && filterId !== 'none' && filterStatus === 'ready' && !faceFound && (
+              <p className="filter-hint">Wajah belum terdeteksi. Hadapkan wajah ke kamera.</p>
+            )}
+          </div>
+        )}
 
         <canvas ref={canvasRef} className="camera-canvas" />
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 import { apiFetch } from './api.js'
+import { useAuth } from './context/AuthContext.jsx'
 import { defaultTemplates } from './data/templates.js'
 import { usePhotobooth } from './hooks/usePhotobooth.js'
 import Navbar from './components/landing/Navbar.jsx'
@@ -14,13 +15,16 @@ import Footer from './components/landing/Footer.jsx'
 import CameraModal from './components/CameraModal.jsx'
 
 export default function App() {
+  const { profile } = useAuth()
   const [templates, setTemplates] = useState(defaultTemplates)
   const [selectedTemplate, setSelectedTemplate] = useState(0)
 
-  const activeTemplate = templates[selectedTemplate] || templates[0]
-  const camera = usePhotobooth(activeTemplate)
+  const canUseFilters = Boolean(profile?.isPremium || profile?.role === 'admin')
 
-  // Mengambil template dari backend
+  const activeTemplate = templates[selectedTemplate] || templates[0]
+  const camera = usePhotobooth(activeTemplate, canUseFilters)
+
+  // Mengambil template dari backend (diambil ulang saat status login/Premium berubah)
   useEffect(() => {
     let cancelled = false
 
@@ -41,7 +45,7 @@ export default function App() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [profile?.id, profile?.isPremium])
 
   function scrollToTemplates() {
     document.getElementById('templates')?.scrollIntoView({
@@ -49,11 +53,32 @@ export default function App() {
     })
   }
 
+  function scrollToPricing() {
+    document.getElementById('pricing')?.scrollIntoView({
+      behavior: 'smooth',
+    })
+  }
+
+  function startBooth() {
+    if (activeTemplate.locked) {
+      scrollToPricing()
+      return
+    }
+
+    camera.openCamera()
+  }
+
+  function needPremium() {
+    camera.closeCamera()
+
+    requestAnimationFrame(scrollToPricing)
+  }
+
   return (
     <main className="website">
-      <Navbar onStart={camera.openCamera} />
+      <Navbar onStart={startBooth} />
 
-      <Hero onStart={camera.openCamera} onScrollToTemplates={scrollToTemplates} />
+      <Hero onStart={startBooth} onScrollToTemplates={scrollToTemplates} />
 
       <HowItWorks />
 
@@ -62,10 +87,10 @@ export default function App() {
         selectedIndex={selectedTemplate}
         onSelect={setSelectedTemplate}
         activeTemplate={activeTemplate}
-        onStart={camera.openCamera}
+        onStart={startBooth}
       />
 
-      <Showcase onStart={camera.openCamera} />
+      <Showcase onStart={startBooth} />
 
       <CustomEventCta />
 
@@ -74,7 +99,12 @@ export default function App() {
       <Footer />
 
       {camera.cameraOpen && (
-        <CameraModal camera={camera} activeTemplate={activeTemplate} />
+        <CameraModal
+          camera={camera}
+          activeTemplate={activeTemplate}
+          canUseFilters={canUseFilters}
+          onNeedPremium={needPremium}
+        />
       )}
     </main>
   )
