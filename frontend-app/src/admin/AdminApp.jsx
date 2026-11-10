@@ -446,8 +446,53 @@ function TemplatesPage() {
 }
 
 function EventsPage() {
+  const [events, setEvents] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+
+  // Mengambil data permintaan event dari backend
+  async function loadEvents() {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await apiFetch('/api/custom-events')
+      setEvents(res.data || [])
+    } catch (err) {
+      setError(err.message || 'Gagal memuat data permintaan event')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadEvents()
+  }, [])
+
+  // Fungsi untuk mengubah status (misal: approved / rejected)
+  async function handleUpdateStatus(id, newStatus) {
+    try {
+      await apiFetch(`/api/custom-events/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: newStatus }),
+      })
+      loadEvents() // Muat ulang data setelah status berubah
+    } catch (err) {
+      alert('Gagal memperbarui status: ' + err.message)
+    }
+  }
+
+  const filteredEvents = events.filter((item) => {
+    const matchSearch =
+      item.name.toLowerCase().includes(search.toLowerCase()) ||
+      item.event_name.toLowerCase().includes(search.toLowerCase())
+    const matchStatus = statusFilter === 'all' || item.status === statusFilter
+    return matchSearch && matchStatus
+  })
+
+  const totalCount = events.length
+  const pendingCount = events.filter((item) => item.status === 'pending').length
   const hasFilter = search.trim() !== '' || statusFilter !== 'all'
 
   function resetFilters() {
@@ -463,7 +508,9 @@ function EventsPage() {
           <h2>Permintaan layanan</h2>
           <p>Tinjau pengajuan photobooth untuk berbagai acara.</p>
         </div>
-        <span className="admin-coming-soon">API belum tersedia</span>
+        <span className="admin-coming-soon" style={{ background: '#e1f5fe', color: '#0288d1', borderColor: '#b3e5fc' }}>
+          API Terhubung
+        </span>
       </div>
 
       <div className="admin-events-overview">
@@ -476,8 +523,8 @@ function EventsPage() {
           </span>
           <div>
             <p>Total permintaan</p>
-            <strong>—</strong>
-            <small>Menunggu data backend</small>
+            <strong>{loading ? '...' : totalCount}</strong>
+            <small>Semua pengajuan masuk</small>
           </div>
         </article>
 
@@ -490,8 +537,8 @@ function EventsPage() {
           </span>
           <div>
             <p>Perlu ditinjau</p>
-            <strong>—</strong>
-            <small>Menunggu data backend</small>
+            <strong>{loading ? '...' : pendingCount}</strong>
+            <small>Menunggu konfirmasi</small>
           </div>
         </article>
       </div>
@@ -546,21 +593,75 @@ function EventsPage() {
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td colSpan={4}>
-                <div className="admin-events-table-empty">
-                  <EmptyState
-                    icon="▤"
-                    title={hasFilter ? 'Data permintaan belum tersedia' : 'Belum ada data permintaan'}
-                    description={
-                      hasFilter
-                        ? 'Data belum dapat dicari atau difilter karena backend belum terhubung.'
-                        : 'Pengajuan pelanggan akan muncul di sini setelah formulir pengguna terhubung dengan backend.'
-                    }
-                  />
-                </div>
-              </td>
-            </tr>
+            {loading ? (
+              <tr>
+                <td colSpan={4} style={{ textAlign: 'center', padding: '30px' }}>Memuat data permintaan...</td>
+              </tr>
+            ) : error ? (
+              <tr>
+                <td colSpan={4} style={{ textAlign: 'center', padding: '30px', color: 'red' }}>{error}</td>
+              </tr>
+            ) : filteredEvents.length === 0 ? (
+              <tr>
+                <td colSpan={4}>
+                  <div className="admin-events-table-empty">
+                    <EmptyState
+                      icon="▤"
+                      title={hasFilter ? 'Tidak ada data yang cocok' : 'Belum ada data permintaan'}
+                      description={
+                        hasFilter
+                          ? 'Coba sesuaikan kata kunci pencarian atau filter status.'
+                          : 'Pengajuan pelanggan dari halaman form kustom akan muncul di sini secara otomatis.'
+                      }
+                    />
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              filteredEvents.map((item) => (
+                <tr key={item.id} style={{ borderBottom: '1px solid var(--admin-border)' }}>
+                  <td style={{ padding: '16px' }}>
+                    <strong style={{ display: 'block', color: 'var(--admin-ink)', fontSize: '13px' }}>{item.event_name}</strong>
+                    <span style={{ color: 'var(--admin-muted)', fontSize: '11px' }}>Oleh: {item.name} ({item.email})</span>
+                  </td>
+                  <td style={{ padding: '16px', color: 'var(--admin-ink)', fontSize: '12px' }}>
+                    {item.event_date ? new Date(item.event_date).toLocaleDateString('id-ID', { dateStyle: 'medium' }) : 'Tanggal fleksibel'}
+                  </td>
+                  <td style={{ padding: '16px' }}>
+                    <span style={{
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      background: item.status === 'approved' ? '#e8f5e9' : item.status === 'rejected' ? '#ffebee' : '#fff3e0',
+                      color: item.status === 'approved' ? '#2e7d32' : item.status === 'rejected' ? '#c62828' : '#ef6c00',
+                    }}>
+                      {item.status === 'approved' ? 'Disetujui' : item.status === 'rejected' ? 'Ditolak' : 'Menunggu'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '16px' }}>
+                    {item.status === 'pending' ? (
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button
+                          onClick={() => handleUpdateStatus(item.id, 'approved')}
+                          style={{ padding: '6px 10px', background: '#4caf50', color: '#fff', border: '0', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}
+                        >
+                          Setujui
+                        </button>
+                        <button
+                          onClick={() => handleUpdateStatus(item.id, 'rejected')}
+                          style={{ padding: '6px 10px', background: '#f44336', color: '#fff', border: '0', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}
+                        >
+                          Tolak
+                        </button>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: '11px', color: 'var(--admin-muted)' }}>Selesai ditinjau</span>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

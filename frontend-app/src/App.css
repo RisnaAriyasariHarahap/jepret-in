@@ -4136,3 +4136,61 @@ nav .brand,
   font-size: 12px;
   text-align: center;
 }
+
+/* ===== FORM CUSTOM EVENT: PERIODE & ESTIMASI ===== */
+
+.event-login-notice {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 16px 18px;
+  border: 1px solid #f0cfd9;
+  border-radius: 16px;
+  background: #fff7f9;
+  text-align: center;
+}
+
+.event-login-notice p {
+  margin: 0;
+  color: #7b4a5d;
+}
+
+.duration-row {
+  display: flex;
+  gap: 10px;
+}
+
+.duration-row input {
+  flex: 1;
+}
+
+.duration-row select {
+  flex: 1;
+}
+
+.event-estimate {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  color: #7b4a5d;
+  background: #fff3f7;
+  font-size: 14px;
+}
+
+.event-estimate:empty {
+  display: none;
+}
+
+.event-estimate p {
+  margin: 0;
+}
+
+.event-estimate-total strong {
+  color: #b4236b;
+  font-size: 18px;
+}
+
+.event-estimate small {
+  color: #a07a89;
+}
