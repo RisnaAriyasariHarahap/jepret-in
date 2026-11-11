@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import './AdminApp.css'
 import { apiFetch, getSession, saveSession, clearSession } from '../api.js'
+import { formatDateTime, formatRupiah } from '../utils/eventPricing.js'
 
 const navigation = [
   { id: 'dashboard', label: 'Dashboard', icon: '▦' },
@@ -451,15 +452,48 @@ function EventsPage() {
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [selected, setSelected] = useState(null)
+  const [finalPrice, setFinalPrice] = useState('')
+  const [adminNotes, setAdminNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [modalError, setModalError] = useState('')
 
-  // Mengambil data permintaan event dari backend
+  const unitLabels = { hour: 'jam', day: 'hari', week: 'minggu', month: 'bulan' }
+
+  const statusLabels = {
+    pending: 'Menunggu',
+    approved: 'Disetujui',
+    rejected: 'Ditolak',
+  }
+
+  const statusColors = {
+    pending: { background: '#fff3e0', color: '#ef6c00' },
+    approved: { background: '#e8f5e9', color: '#2e7d32' },
+    rejected: { background: '#ffebee', color: '#c62828' },
+  }
+
+  function redirectIfUnauthorized(err) {
+    if (err.status === 401 || err.status === 403) {
+      clearSession()
+      window.location.replace('/admin/login')
+      return true
+    }
+
+    return false
+  }
+
+  // Mengambil data permintaan event dari backend (khusus admin)
   async function loadEvents() {
     setLoading(true)
     setError('')
+
     try {
-      const res = await apiFetch('/api/custom-events')
-      setEvents(res.data || [])
+      const result = await apiFetch('/api/admin/custom-events')
+
+      setEvents(result.data || [])
     } catch (err) {
+      if (redirectIfUnauthorized(err)) return
+
       setError(err.message || 'Gagal memuat data permintaan event')
     } finally {
       setLoading(false)
@@ -470,24 +504,53 @@ function EventsPage() {
     loadEvents()
   }, [])
 
-  // Fungsi untuk mengubah status (misal: approved / rejected)
-  async function handleUpdateStatus(id, newStatus) {
+  function openReview(item) {
+    setSelected(item)
+    setFinalPrice(String(item.finalPrice ?? item.quotedPrice ?? ''))
+    setAdminNotes(item.adminNotes ?? '')
+    setModalError('')
+  }
+
+  function closeReview() {
+    if (!saving) setSelected(null)
+  }
+
+  async function submitReview(status) {
+    setSaving(true)
+    setModalError('')
+
     try {
-      await apiFetch(`/api/custom-events/${id}/status`, {
+      const body = { status, adminNotes }
+
+      if (status === 'approved') body.finalPrice = finalPrice
+
+      await apiFetch(`/api/admin/custom-events/${selected.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify(body),
       })
-      loadEvents() // Muat ulang data setelah status berubah
+
+      setSelected(null)
+      loadEvents()
     } catch (err) {
-      alert('Gagal memperbarui status: ' + err.message)
+      if (redirectIfUnauthorized(err)) return
+
+      setModalError(err.message || 'Gagal memperbarui permintaan')
+    } finally {
+      setSaving(false)
     }
   }
 
+  const keyword = search.trim().toLowerCase()
+
   const filteredEvents = events.filter((item) => {
     const matchSearch =
-      item.name.toLowerCase().includes(search.toLowerCase()) ||
-      item.event_name.toLowerCase().includes(search.toLowerCase())
+      keyword === '' ||
+      item.name.toLowerCase().includes(keyword) ||
+      item.eventName.toLowerCase().includes(keyword) ||
+      item.email.toLowerCase().includes(keyword)
+
     const matchStatus = statusFilter === 'all' || item.status === statusFilter
+
     return matchSearch && matchStatus
   })
 
@@ -553,7 +616,7 @@ function EventsPage() {
             </svg>
             <input
               type="search"
-              placeholder="Cari nama pelanggan atau acara..."
+              placeholder="Cari nama, email, atau acara..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
@@ -587,7 +650,8 @@ function EventsPage() {
           <thead>
             <tr>
               <th>INFORMASI ACARA</th>
-              <th>TANGGAL ACARA</th>
+              <th>PERIODE</th>
+              <th>HARGA</th>
               <th>STATUS</th>
               <th>AKSI</th>
             </tr>
@@ -595,15 +659,15 @@ function EventsPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={4} style={{ textAlign: 'center', padding: '30px' }}>Memuat data permintaan...</td>
+                <td colSpan={5} style={{ textAlign: 'center', padding: '30px' }}>Memuat data permintaan...</td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan={4} style={{ textAlign: 'center', padding: '30px', color: 'red' }}>{error}</td>
+                <td colSpan={5} style={{ textAlign: 'center', padding: '30px', color: 'red' }}>{error}</td>
               </tr>
             ) : filteredEvents.length === 0 ? (
               <tr>
-                <td colSpan={4}>
+                <td colSpan={5}>
                   <div className="admin-events-table-empty">
                     <EmptyState
                       icon="▤"
@@ -621,11 +685,34 @@ function EventsPage() {
               filteredEvents.map((item) => (
                 <tr key={item.id} style={{ borderBottom: '1px solid var(--admin-border)' }}>
                   <td style={{ padding: '16px' }}>
-                    <strong style={{ display: 'block', color: 'var(--admin-ink)', fontSize: '13px' }}>{item.event_name}</strong>
+                    <strong style={{ display: 'block', color: 'var(--admin-ink)', fontSize: '13px' }}>{item.eventName}</strong>
                     <span style={{ color: 'var(--admin-muted)', fontSize: '11px' }}>Oleh: {item.name} ({item.email})</span>
                   </td>
                   <td style={{ padding: '16px', color: 'var(--admin-ink)', fontSize: '12px' }}>
-                    {item.event_date ? new Date(item.event_date).toLocaleDateString('id-ID', { dateStyle: 'medium' }) : 'Tanggal fleksibel'}
+                    {item.startsAt ? (
+                      <>
+                        <strong style={{ display: 'block' }}>
+                          {item.durationValue} {unitLabels[item.durationUnit] ?? ''}
+                        </strong>
+                        <span style={{ color: 'var(--admin-muted)', fontSize: '11px' }}>
+                          {formatDateTime(new Date(item.startsAt))}
+                        </span>
+                      </>
+                    ) : (
+                      <span style={{ color: 'var(--admin-muted)' }}>Belum diisi</span>
+                    )}
+                  </td>
+                  <td style={{ padding: '16px', color: 'var(--admin-ink)', fontSize: '12px' }}>
+                    {item.finalPrice != null ? (
+                      <strong>{formatRupiah(item.finalPrice)}</strong>
+                    ) : item.quotedPrice != null ? (
+                      <span>
+                        {formatRupiah(item.quotedPrice)}
+                        <small style={{ display: 'block', color: 'var(--admin-muted)' }}>estimasi</small>
+                      </span>
+                    ) : (
+                      <span style={{ color: 'var(--admin-muted)' }}>-</span>
+                    )}
                   </td>
                   <td style={{ padding: '16px' }}>
                     <span style={{
@@ -633,31 +720,19 @@ function EventsPage() {
                       borderRadius: '6px',
                       fontSize: '11px',
                       fontWeight: '700',
-                      background: item.status === 'approved' ? '#e8f5e9' : item.status === 'rejected' ? '#ffebee' : '#fff3e0',
-                      color: item.status === 'approved' ? '#2e7d32' : item.status === 'rejected' ? '#c62828' : '#ef6c00',
+                      ...(statusColors[item.status] ?? statusColors.pending),
                     }}>
-                      {item.status === 'approved' ? 'Disetujui' : item.status === 'rejected' ? 'Ditolak' : 'Menunggu'}
+                      {statusLabels[item.status] ?? item.status}
                     </span>
                   </td>
                   <td style={{ padding: '16px' }}>
-                    {item.status === 'pending' ? (
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button
-                          onClick={() => handleUpdateStatus(item.id, 'approved')}
-                          style={{ padding: '6px 10px', background: '#4caf50', color: '#fff', border: '0', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}
-                        >
-                          Setujui
-                        </button>
-                        <button
-                          onClick={() => handleUpdateStatus(item.id, 'rejected')}
-                          style={{ padding: '6px 10px', background: '#f44336', color: '#fff', border: '0', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}
-                        >
-                          Tolak
-                        </button>
-                      </div>
-                    ) : (
-                      <span style={{ fontSize: '11px', color: 'var(--admin-muted)' }}>Selesai ditinjau</span>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => openReview(item)}
+                      style={{ padding: '6px 12px', background: '#fff', color: 'var(--admin-ink)', border: '1px solid var(--admin-border)', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+                    >
+                      {item.status === 'pending' ? 'Tinjau' : 'Lihat'}
+                    </button>
                   </td>
                 </tr>
               ))
@@ -665,6 +740,99 @@ function EventsPage() {
           </tbody>
         </table>
       </div>
+
+      {selected && (
+        <div
+          className="admin-template-modal-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeReview()
+          }}
+        >
+          <section
+            className="admin-template-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-event-review-title"
+          >
+            <div className="admin-template-modal-header">
+              <div>
+                <span className="admin-eyebrow">TINJAU PERMINTAAN</span>
+                <h2 id="admin-event-review-title">{selected.eventName}</h2>
+                <p>{selected.name} · {selected.email}{selected.phone ? ` · ${selected.phone}` : ''}</p>
+              </div>
+              <button type="button" className="admin-template-close" onClick={closeReview} aria-label="Tutup">×</button>
+            </div>
+
+            <dl style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: '6px 12px', margin: '0 0 16px', fontSize: '13px' }}>
+              <dt style={{ color: 'var(--admin-muted)' }}>Jenis acara</dt>
+              <dd style={{ margin: 0 }}>{selected.eventType}</dd>
+              <dt style={{ color: 'var(--admin-muted)' }}>Tanggal acara</dt>
+              <dd style={{ margin: 0 }}>{selected.eventDate ?? '-'}</dd>
+              <dt style={{ color: 'var(--admin-muted)' }}>Lokasi</dt>
+              <dd style={{ margin: 0 }}>{selected.location ?? '-'}</dd>
+              <dt style={{ color: 'var(--admin-muted)' }}>Jumlah tamu</dt>
+              <dd style={{ margin: 0 }}>{selected.guestCount ?? '-'}</dd>
+              <dt style={{ color: 'var(--admin-muted)' }}>Periode</dt>
+              <dd style={{ margin: 0 }}>
+                {selected.startsAt
+                  ? `${formatDateTime(new Date(selected.startsAt))} sampai ${formatDateTime(new Date(selected.endsAt))} (${selected.durationValue} ${unitLabels[selected.durationUnit] ?? ''})`
+                  : 'Belum diisi'}
+              </dd>
+              <dt style={{ color: 'var(--admin-muted)' }}>Estimasi</dt>
+              <dd style={{ margin: 0 }}>{selected.quotedPrice != null ? formatRupiah(selected.quotedPrice) : '-'}</dd>
+              <dt style={{ color: 'var(--admin-muted)' }}>Tema</dt>
+              <dd style={{ margin: 0 }}>{selected.themeNotes ?? '-'}</dd>
+            </dl>
+
+            <label className="admin-template-field">
+              <span>Harga final (Rp)</span>
+              <input
+                type="number"
+                min="0"
+                step="1000"
+                value={finalPrice}
+                onChange={(event) => setFinalPrice(event.target.value)}
+                placeholder="Contoh: 900000"
+              />
+            </label>
+
+            <label className="admin-template-field">
+              <span>Catatan untuk pelanggan</span>
+              <textarea
+                rows="3"
+                maxLength={1000}
+                value={adminNotes}
+                onChange={(event) => setAdminNotes(event.target.value)}
+                placeholder="Misalnya: diskon 10% untuk acara kampus"
+              />
+            </label>
+
+            {modalError && (
+              <div className="admin-template-form-note" role="alert">{modalError}</div>
+            )}
+
+            <div className="admin-template-form-actions">
+              <button type="button" className="admin-template-cancel" onClick={closeReview} disabled={saving}>Tutup</button>
+              <button
+                type="button"
+                className="admin-template-cancel"
+                onClick={() => submitReview('rejected')}
+                disabled={saving}
+              >
+                Tolak
+              </button>
+              <button
+                type="button"
+                className="admin-template-add"
+                onClick={() => submitReview('approved')}
+                disabled={saving || finalPrice === ''}
+              >
+                {saving ? 'Menyimpan...' : 'Setujui'}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   )
 }

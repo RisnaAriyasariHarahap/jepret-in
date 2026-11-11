@@ -10,6 +10,7 @@ import plansRouter from './routes/plans.js'
 import transactionsRouter from './routes/transactions.js'
 import midtransRouter from './routes/midtrans.js'
 import eventRatesRouter from './routes/eventRates.js'
+import adminEventsRouter from './routes/adminEvents.js'
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -34,6 +35,7 @@ app.use(express.json({ limit: '1mb' }))
 
 app.use('/api/templates', templatesRouter)
 app.use('/api/auth', authRouter)
+app.use('/api/admin/custom-events', adminEventsRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/custom-events', customEventsRouter)
 app.use('/api/event-rates', eventRatesRouter)

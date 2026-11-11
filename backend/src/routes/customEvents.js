@@ -1,15 +1,15 @@
 import { Router } from 'express'
 import { supabase } from '../config/supabase.js'
-import { optionalAuth } from '../middleware/auth.js'
-import { EVENT_TYPES } from '../utils/customEvent.js'
-import { getRates, calculateQuote } from '../utils/pricing.js'
+import { requireAuth } from '../middleware/auth.js'
+import { EVENT_TYPES, toCustomEvent } from '../utils/customEvent.js'
+import { calculateQuote, getRates } from '../utils/pricing.js'
 
 const router = Router()
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 
-router.post('/', optionalAuth, async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   const body = req.body || {}
 
   const name = String(body.name ?? '').trim()
@@ -21,10 +21,6 @@ router.post('/', optionalAuth, async (req, res) => {
   const location = String(body.location ?? '').trim()
   const themeNotes = String(body.themeNotes ?? '').trim()
   const guestCountRaw = String(body.guestCount ?? '').trim()
-  
-  const startsAtRaw = body.startsAt
-  const durationUnit = String(body.durationUnit ?? '').trim()
-  const durationValueRaw = body.durationValue
 
   if (name.length < 2 || name.length > 100) {
     return res.status(400).json({ message: 'Nama lengkap harus 2 sampai 100 karakter' })
@@ -55,47 +51,48 @@ router.post('/', optionalAuth, async (req, res) => {
   }
 
   let eventDateValue = null
+
   if (eventDate) {
     if (!DATE_PATTERN.test(eventDate) || Number.isNaN(Date.parse(eventDate))) {
       return res.status(400).json({ message: 'Format tanggal acara tidak valid' })
     }
+
     eventDateValue = eventDate
   }
 
   let guestCount = null
+
   if (guestCountRaw) {
     guestCount = Number(guestCountRaw)
+
     if (!Number.isInteger(guestCount) || guestCount < 1 || guestCount > 100000) {
       return res.status(400).json({ message: 'Jumlah tamu tidak valid' })
     }
   }
 
-  // Hitung harga & validasi server-side
-  let quotedPrice = null
-  let endsAtValue = null
+  const durationUnit = String(body.durationUnit ?? '').trim()
+  const rates = await getRates()
 
-  if (startsAtRaw && durationUnit && durationValueRaw !== undefined) {
-    try {
-      const rates = await getRates()
-      const quoteResult = calculateQuote(rates, {
-        startsAt: startsAtRaw,
-        unit: durationUnit,
-        value: durationValueRaw,
-      })
+  const quote = calculateQuote(rates, {
+    startsAt: body.startsAt,
+    unit: durationUnit,
+    value: body.durationValue,
+  })
 
-      if (!quoteResult.error) {
-        quotedPrice = quoteResult.price
-        endsAtValue = quoteResult.endsAt.toISOString()
-      }
-    } catch (err) {
-      console.error('Gagal menghitung quote:', err)
-    }
+  if (quote.error) {
+    return res.status(400).json({ message: quote.error })
+  }
+
+  const startsAt = new Date(body.startsAt)
+
+  if (startsAt.getTime() < Date.now() - 5 * 60 * 1000) {
+    return res.status(400).json({ message: 'Waktu mulai tidak boleh di masa lalu' })
   }
 
   const { data, error } = await supabase
     .from('custom_events')
     .insert({
-      user_id: req.user?.id ?? null,
+      user_id: req.user.id,
       name,
       email,
       phone: phone || null,
@@ -105,72 +102,34 @@ router.post('/', optionalAuth, async (req, res) => {
       location: location || null,
       guest_count: guestCount,
       theme_notes: themeNotes || null,
-      starts_at: startsAtRaw ? new Date(startsAtRaw).toISOString() : null,
-      duration_unit: durationUnit || null,
-      duration_value: durationValueRaw ? Number(durationValueRaw) : null,
-      ends_at: endsAtValue,
-      quoted_price: quotedPrice,
+      starts_at: startsAt.toISOString(),
+      duration_unit: durationUnit,
+      duration_value: Number(body.durationValue),
+      ends_at: quote.endsAt.toISOString(),
+      quoted_price: quote.price,
     })
-    .select('id, status')
+    .select('id, status, quoted_price')
     .single()
 
-  if (error) {
-    console.error('Supabase insert error:', error)
-    throw error
-  }
+  if (error) throw error
 
   return res.status(201).json({
     message: 'Permintaan berhasil dikirim',
-    data: { id: data.id, status: data.status },
+    data: { id: data.id, status: data.status, quotedPrice: data.quoted_price },
   })
 })
 
-// Endpoint untuk mengambil daftar permintaan event (untuk dashboard admin)
-router.get('/', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('custom_events')
-      .select('*')
-      .order('created_at', { ascending: false })
+// Daftar permintaan custom event milik user yang sedang login
+router.get('/me', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('custom_events')
+    .select('*')
+    .eq('user_id', req.user.id)
+    .order('created_at', { ascending: false })
 
-    if (error) throw error
+  if (error) throw error
 
-    return res.json({ data })
-  } catch (err) {
-    console.error('Error fetching custom events:', err)
-    return res.status(500).json({ message: 'Gagal memuat data permintaan event' })
-  }
-})
-
-
-// Endpoint untuk mengubah status permintaan (admin)
-router.patch('/:id/status', async (req, res) => {
-  const { id } = req.params
-  const { status, adminNotes } = req.body
-
-  if (!['pending', 'approved', 'rejected'].includes(status)) {
-    return res.status(400).json({ message: 'Status tidak valid' })
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from('custom_events')
-      .update({
-        status,
-        admin_notes: adminNotes !== undefined ? adminNotes : undefined,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id)
-      .select()
-      .single()
-
-    if (error) throw error
-
-    return res.json({ message: 'Status berhasil diperbarui', data })
-  } catch (err) {
-    console.error('Error updating status:', err)
-    return res.status(500).json({ message: 'Gagal memperbarui status permintaan' })
-  }
+  res.json({ data: data.map(toCustomEvent) })
 })
 
 export default router
