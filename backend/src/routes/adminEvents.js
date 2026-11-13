@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
     .select('*')
     .order('created_at', { ascending: false })
 
-  if (EVENT_STATUSES.includes(status)) {
+  if ([...EVENT_STATUSES, 'paid'].includes(status)) {
     query = query.eq('status', status)
   }
 
@@ -58,6 +58,10 @@ router.patch('/:id', async (req, res) => {
 
   if (!current) {
     return res.status(404).json({ message: 'Permintaan tidak ditemukan' })
+  }
+
+  if (current.status === 'paid') {
+    return res.status(409).json({ message: 'Event yang sudah dibayar tidak bisa diubah' })
   }
 
   const updates = {}

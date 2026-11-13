@@ -21,6 +21,7 @@ export default function Navbar({ onStart }) {
         <a href="/#cara-kerja">Cara Kerja</a>
         <a href="/#templates">Templates</a>
         <a href="/form-custom-event">Custom Event</a>
+        {isLoggedIn && <a href="/event-saya">Event Saya</a>}
         <a href="/#pricing">Pricing</a>
       </div>
 

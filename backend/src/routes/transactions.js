@@ -13,6 +13,7 @@ import { toProfile } from '../utils/profile.js'
 const router = Router()
 
 const ONE_HOUR_IN_MS = 60 * 60 * 1000
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 router.post('/', requireAuth, async (req, res) => {
   const planId = String(req.body?.planId ?? '').trim()
@@ -139,6 +140,126 @@ router.get('/me', requireAuth, async (req, res) => {
       paidAt: item.paid_at,
     })),
   })
+})
+
+router.post('/event', requireAuth, async (req, res) => {
+  const customEventId = String(req.body?.customEventId ?? '').trim()
+
+  if (!UUID_PATTERN.test(customEventId)) {
+    return res.status(404).json({ message: 'Event tidak ditemukan' })
+  }
+
+  const { data: event, error: eventError } = await supabase
+    .from('custom_events')
+    .select('*')
+    .eq('id', customEventId)
+    .eq('user_id', req.profile.id)
+    .maybeSingle()
+
+  if (eventError) throw eventError
+
+  if (!event) {
+    return res.status(404).json({ message: 'Event tidak ditemukan' })
+  }
+
+  if (event.status === 'paid') {
+    return res.status(409).json({ message: 'Event ini sudah dibayar' })
+  }
+
+  if (event.status !== 'approved') {
+    return res.status(400).json({ message: 'Event belum disetujui admin' })
+  }
+
+  if (!event.final_price || event.final_price <= 0) {
+    return res.status(400).json({ message: 'Harga event belum ditetapkan' })
+  }
+
+  if (event.ends_at && new Date(event.ends_at).getTime() <= Date.now()) {
+    return res.status(400).json({ message: 'Periode event sudah berakhir' })
+  }
+
+  const publicConfig = getPublicConfig()
+
+  const since = new Date(Date.now() - ONE_HOUR_IN_MS).toISOString()
+
+  const { data: existing, error: existingError } = await supabase
+    .from('transactions')
+    .select('order_id, snap_token')
+    .eq('user_id', req.profile.id)
+    .eq('custom_event_id', event.id)
+    .eq('gross_amount', event.final_price)
+    .eq('status', 'pending')
+    .not('snap_token', 'is', null)
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  if (existingError) throw existingError
+
+  if (existing.length > 0) {
+    return res.json({
+      data: {
+        orderId: existing[0].order_id,
+        token: existing[0].snap_token,
+        ...publicConfig,
+      },
+    })
+  }
+
+  const orderId = `JPT-EVT-${Date.now().toString(36).toUpperCase()}-${crypto
+    .randomBytes(4)
+    .toString('hex')
+    .toUpperCase()}`
+
+  const { error: insertError } = await supabase.from('transactions').insert({
+    order_id: orderId,
+    user_id: req.profile.id,
+    custom_event_id: event.id,
+    gross_amount: event.final_price,
+    status: 'pending',
+  })
+
+  if (insertError) throw insertError
+
+  try {
+    const snap = await createSnapTransaction({
+      transaction_details: {
+        order_id: orderId,
+        gross_amount: event.final_price,
+      },
+      item_details: [
+        {
+          id: `event-${event.id.slice(0, 8)}`,
+          price: event.final_price,
+          quantity: 1,
+          name: `Custom Event: ${event.event_name}`.slice(0, 50),
+        },
+      ],
+      customer_details: {
+        first_name: req.profile.full_name || 'Pelanggan',
+        email: req.profile.email,
+      },
+      credit_card: { secure: true },
+    })
+
+    const { error: tokenError } = await supabase
+      .from('transactions')
+      .update({ snap_token: snap.token })
+      .eq('order_id', orderId)
+
+    if (tokenError) throw tokenError
+
+    return res.status(201).json({
+      data: { orderId, token: snap.token, ...publicConfig },
+    })
+  } catch (error) {
+    await supabase
+      .from('transactions')
+      .update({ status: 'failed' })
+      .eq('order_id', orderId)
+
+    throw error
+  }
 })
 
 router.post('/:orderId/sync', requireAuth, async (req, res) => {

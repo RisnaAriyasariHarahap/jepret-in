@@ -4194,3 +4194,92 @@ nav .brand,
 .event-estimate small {
   color: #a07a89;
 }
+
+
+/* Halaman Event Saya */
+.my-events {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 120px 24px 80px;
+}
+
+.my-events h2 {
+  font-family: var(--serif);
+  font-size: 2.2rem;
+  margin: 8px 0 28px;
+}
+
+.my-events h2 span {
+  color: var(--pink-dark);
+}
+
+.my-events-list {
+  display: grid;
+  gap: 16px;
+}
+
+.my-event-card {
+  background: #fff;
+  border: 1px solid var(--rose);
+  border-radius: 18px;
+  padding: 20px 22px;
+  display: grid;
+  gap: 8px;
+}
+
+.my-event-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.my-event-head h3 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.my-event-status {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: #fff3e0;
+  color: #ef6c00;
+}
+
+.my-event-status.is-approved { background: #e3f2fd; color: #1565c0; }
+.my-event-status.is-paid { background: #e8f5e9; color: #2e7d32; }
+.my-event-status.is-rejected { background: #ffebee; color: #c62828; }
+
+.my-event-line {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.my-event-line strong {
+  color: var(--ink);
+}
+
+.my-event-card .pricing-button {
+  justify-self: start;
+  margin-top: 6px;
+}
+
+.my-events-empty,
+.my-events-note {
+  color: var(--muted);
+}
+
+.my-events-note.is-error {
+  color: #c62828;
+}
+
+.my-events-message {
+  background: var(--pink-light);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin: 0;
+}

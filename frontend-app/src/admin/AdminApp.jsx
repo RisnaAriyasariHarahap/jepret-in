@@ -464,12 +464,14 @@ function EventsPage() {
     pending: 'Menunggu',
     approved: 'Disetujui',
     rejected: 'Ditolak',
+    paid: 'Sudah dibayar',
   }
 
   const statusColors = {
     pending: { background: '#fff3e0', color: '#ef6c00' },
     approved: { background: '#e8f5e9', color: '#2e7d32' },
     rejected: { background: '#ffebee', color: '#c62828' },
+    paid: { background: '#e3f2fd', color: '#1565c0' },
   }
 
   function redirectIfUnauthorized(err) {
@@ -630,6 +632,7 @@ function EventsPage() {
             <option value="pending">Menunggu</option>
             <option value="approved">Disetujui</option>
             <option value="rejected">Ditolak</option>
+            <option value="paid">Dibayar</option>
           </select>
         </label>
 
@@ -813,22 +816,26 @@ function EventsPage() {
 
             <div className="admin-template-form-actions">
               <button type="button" className="admin-template-cancel" onClick={closeReview} disabled={saving}>Tutup</button>
-              <button
-                type="button"
-                className="admin-template-cancel"
-                onClick={() => submitReview('rejected')}
-                disabled={saving}
-              >
-                Tolak
-              </button>
-              <button
-                type="button"
-                className="admin-template-add"
-                onClick={() => submitReview('approved')}
-                disabled={saving || finalPrice === ''}
-              >
-                {saving ? 'Menyimpan...' : 'Setujui'}
-              </button>
+              {selected.status !== 'paid' && (
+                <>
+                  <button
+                    type="button"
+                    className="admin-template-cancel"
+                    onClick={() => submitReview('rejected')}
+                    disabled={saving}
+                  >
+                    Tolak
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-template-add"
+                    onClick={() => submitReview('approved')}
+                    disabled={saving || finalPrice === ''}
+                  >
+                    {saving ? 'Menyimpan...' : 'Setujui'}
+                  </button>
+                </>
+              )}
             </div>
           </section>
         </div>
