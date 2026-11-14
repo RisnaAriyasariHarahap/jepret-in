@@ -1,20 +1,21 @@
 import { Router } from 'express'
 import { supabase } from '../config/supabase.js'
 import { toProfile } from '../utils/profile.js'
+import { toTemplate } from '../utils/template.js'
 
 const router = Router()
 
-// Apakah pengunjung boleh memakai template premium? (Premium aktif atau admin)
-async function viewerHasPremiumAccess(req) {
+// Mengenali pengunjung dari token (opsional): id akun dan hak akses Premium
+async function getViewer(req) {
   const header = req.headers.authorization || ''
   const token = header.startsWith('Bearer ') ? header.slice(7) : null
 
-  if (!token) return false
+  if (!token) return null
 
   try {
     const { data, error } = await supabase.auth.getUser(token)
 
-    if (error || !data?.user) return false
+    if (error || !data?.user) return null
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -22,42 +23,59 @@ async function viewerHasPremiumAccess(req) {
       .eq('id', data.user.id)
       .maybeSingle()
 
-    if (!profile) return false
+    if (!profile) return null
 
-    return profile.role === 'admin' || toProfile(profile).isPremium
+    return {
+      id: profile.id,
+      hasPremiumAccess: profile.role === 'admin' || toProfile(profile).isPremium,
+    }
   } catch {
-    return false
+    return null
   }
 }
 
 router.get('/', async (req, res) => {
-  const { data, error } = await supabase
+  const viewer = await getViewer(req)
+  const nowIso = new Date().toISOString()
+
+  // Template umum (bukan milik event tertentu)
+  const { data: publicTemplates, error } = await supabase
     .from('templates')
     .select('*')
     .eq('is_active', true)
+    .is('owner_id', null)
     .order('is_premium', { ascending: true })
     .order('created_at', { ascending: true })
 
   if (error) throw error
 
-  const hasAccess = await viewerHasPremiumAccess(req)
+  // Template event: hanya untuk pemiliknya, hanya selama masa aktif
+  let eventTemplates = []
+
+  if (viewer) {
+    const { data, error: eventError } = await supabase
+      .from('templates')
+      .select('*')
+      .eq('is_active', true)
+      .eq('owner_id', viewer.id)
+      .lte('active_from', nowIso)
+      .gte('active_until', nowIso)
+      .order('created_at', { ascending: false })
+
+    if (eventError) throw eventError
+
+    eventTemplates = data
+  }
+
+  const hasAccess = Boolean(viewer?.hasPremiumAccess)
 
   res.json({
-    data: data.map((template) => ({
-      id: template.id,
-      name: template.name,
-      className: template.slug,
-      category: template.category,
-      description: template.description,
-      background: template.background,
-      accent: template.accent,
-      decoration: template.decoration,
-      tag: template.tag,
-      imageUrl: template.image_url,
-      isPremium: Boolean(template.is_premium),
-      locked: Boolean(template.is_premium) && !hasAccess,
-      config: template.config ?? null,
-    })),
+    data: [
+      ...eventTemplates.map((template) => toTemplate(template)),
+      ...publicTemplates.map((template) =>
+        toTemplate(template, { locked: Boolean(template.is_premium) && !hasAccess })
+      ),
+    ],
   })
 })
 

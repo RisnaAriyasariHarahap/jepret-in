@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import './AdminApp.css'
 import { apiFetch, getSession, saveSession, clearSession } from '../api.js'
 import { formatDateTime, formatRupiah } from '../utils/eventPricing.js'
+import EventTemplateEditor from './EventTemplateEditor.jsx'
 
 const navigation = [
   { id: 'dashboard', label: 'Dashboard', icon: '▦' },
@@ -457,6 +458,7 @@ function EventsPage() {
   const [adminNotes, setAdminNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [modalError, setModalError] = useState('')
+  const [editorEvent, setEditorEvent] = useState(null)
 
   const unitLabels = { hour: 'jam', day: 'hari', week: 'minggu', month: 'bulan' }
 
@@ -816,7 +818,18 @@ function EventsPage() {
 
             <div className="admin-template-form-actions">
               <button type="button" className="admin-template-cancel" onClick={closeReview} disabled={saving}>Tutup</button>
-              {selected.status !== 'paid' && (
+              {selected.status === 'paid' ? (
+                <button
+                  type="button"
+                  className="admin-template-add"
+                  onClick={() => {
+                    setEditorEvent(selected)
+                    setSelected(null)
+                  }}
+                >
+                  Template event
+                </button>
+              ) : (
                 <>
                   <button
                     type="button"
@@ -839,6 +852,10 @@ function EventsPage() {
             </div>
           </section>
         </div>
+      )}
+
+      {editorEvent && (
+        <EventTemplateEditor event={editorEvent} onClose={() => setEditorEvent(null)} />
       )}
     </section>
   )

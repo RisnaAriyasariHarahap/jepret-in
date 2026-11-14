@@ -3,6 +3,8 @@ import { supabase } from '../config/supabase.js'
 import { requireAuth, requireAdmin } from '../middleware/auth.js'
 import { EVENT_STATUSES, toCustomEvent } from '../utils/customEvent.js'
 import { calculateQuote, getRates } from '../utils/pricing.js'
+import { toTemplate } from '../utils/template.js'
+import { sanitizeTemplateInput } from '../utils/templateConfig.js'
 
 const router = Router()
 
@@ -140,6 +142,92 @@ router.patch('/:id', async (req, res) => {
   if (error) throw error
 
   res.json({ message: 'Permintaan diperbarui', data: toCustomEvent(data) })
+})
+
+router.get('/:id/template', async (req, res) => {
+  const { id } = req.params
+
+  if (!UUID_PATTERN.test(id)) {
+    return res.status(404).json({ message: 'Permintaan tidak ditemukan' })
+  }
+
+  const { data, error } = await supabase
+    .from('templates')
+    .select('*')
+    .eq('custom_event_id', id)
+    .maybeSingle()
+
+  if (error) throw error
+
+  res.json({ data: data ? toTemplate(data) : null })
+})
+
+router.put('/:id/template', async (req, res) => {
+  const { id } = req.params
+
+  if (!UUID_PATTERN.test(id)) {
+    return res.status(404).json({ message: 'Permintaan tidak ditemukan' })
+  }
+
+  const { data: event, error: eventError } = await supabase
+    .from('custom_events')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (eventError) throw eventError
+
+  if (!event) {
+    return res.status(404).json({ message: 'Permintaan tidak ditemukan' })
+  }
+
+  if (event.status !== 'paid') {
+    return res.status(400).json({ message: 'Template hanya bisa dibuat untuk event yang sudah dibayar' })
+  }
+
+  if (!event.user_id) {
+    return res.status(400).json({ message: 'Event ini tidak punya akun pemilik (diajukan sebelum wajib login)' })
+  }
+
+  if (!event.starts_at || !event.ends_at) {
+    return res.status(400).json({ message: 'Periode event belum lengkap' })
+  }
+
+  const input = sanitizeTemplateInput(req.body)
+
+  if (input.error) {
+    return res.status(400).json({ message: input.error })
+  }
+
+  const fields = {
+    ...input.value,
+    description: `Template khusus ${event.event_name}`,
+    category: 'Custom Event',
+    is_premium: false,
+    is_active: true,
+    owner_id: event.user_id,
+    custom_event_id: event.id,
+    active_from: event.starts_at,
+    active_until: event.ends_at,
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from('templates')
+    .select('id')
+    .eq('custom_event_id', id)
+    .maybeSingle()
+
+  if (existingError) throw existingError
+
+  const query = existing
+    ? supabase.from('templates').update(fields).eq('id', existing.id)
+    : supabase.from('templates').insert({ slug: `event-${id.slice(0, 8)}`, ...fields })
+
+  const { data, error } = await query.select('*').single()
+
+  if (error) throw error
+
+  res.json({ message: 'Template event disimpan', data: toTemplate(data) })
 })
 
 export default router

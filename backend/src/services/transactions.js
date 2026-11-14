@@ -92,6 +92,19 @@ export async function applyMidtransStatus(midtrans) {
   if (updateError) throw updateError
 
   const justSettled = newStatus === 'settlement' && updated.length > 0
+  
+  if (justSettled && transaction.user_id && transaction.plan_id) {
+    try {
+      await activatePremium(transaction.user_id, transaction.plan_id)
+    } catch (activationError) {
+      await supabase
+        .from('transactions')
+        .update({ status: 'pending', paid_at: null })
+        .eq('order_id', orderId)
+
+      throw activationError
+    }
+  }
 
   if (justSettled && transaction.custom_event_id) {
     const { error: eventError } = await supabase
