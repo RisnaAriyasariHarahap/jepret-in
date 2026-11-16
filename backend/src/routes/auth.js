@@ -1,3 +1,4 @@
+cat << 'EOF' > ~/jepret-in/backend/src/routes/auth.js
 import { Router } from 'express'
 import { supabase, createAuthClient } from '../config/supabase.js'
 import { requireAuth } from '../middleware/auth.js'
@@ -5,119 +6,105 @@ import { toProfile } from '../utils/profile.js'
 
 const router = Router()
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-function toSession(session) {
-  return {
-    accessToken: session.access_token,
-    refreshToken: session.refresh_token,
-    expiresAt: session.expires_at,
-  }
-}
-
-async function getProfile(userId) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single()
-
-  if (error) throw error
-
-  return toProfile(data)
-}
-
+// Register
 router.post('/register', async (req, res) => {
-  const fullName = String(req.body?.fullName || '').trim()
-  const email = String(req.body?.email || '').trim().toLowerCase()
-  const password = String(req.body?.password || '')
+  try {
+    const { email, password, fullName } = req.body
 
-  if (fullName.length < 2) {
-    return res.status(400).json({ message: 'Nama lengkap minimal 2 karakter' })
-  }
-
-  if (!EMAIL_PATTERN.test(email)) {
-    return res.status(400).json({ message: 'Format email tidak valid' })
-  }
-
-  if (password.length < 8) {
-    return res.status(400).json({ message: 'Password minimal 8 karakter' })
-  }
-
-  const { data, error } = await createAuthClient().auth.signUp({
-    email,
-    password,
-    options: { data: { full_name: fullName } },
-  })
-
-  if (error) {
-    return res.status(400).json({ message: error.message })
-  }
-
-  if (!data.session) {
-    return res.status(201).json({
-      needsConfirmation: true,
-      message: 'Registrasi berhasil. Silakan cek email untuk konfirmasi.',
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: fullName }
+      }
     })
+
+    if (error) throw error
+
+    // Ambil profil jika ada, fallback aman jika null
+    let profile = null
+    if (data.user) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .maybeSingle()
+      profile = profileData ? toProfile(profileData) : { id: data.user.id, email, fullName, plan_id: 'free' }
+    }
+
+    res.json({
+      message: 'Registrasi berhasil',
+      session: data.session,
+      user: data.user,
+      profile
+    })
+  } catch (err) {
+    res.status(400).json({ message: err.message })
   }
-
-  const profile = await getProfile(data.user.id)
-
-  return res.status(201).json({ session: toSession(data.session), profile })
 })
 
+// Login
 router.post('/login', async (req, res) => {
-  const email = String(req.body?.email || '').trim().toLowerCase()
-  const password = String(req.body?.password || '')
+  try {
+    const { email, password } = req.body
 
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Email dan password wajib diisi' })
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    })
+
+    if (error) throw error
+
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .maybeSingle()
+
+    const profile = profileData ? toProfile(profileData) : { id: data.user.id, email, plan_id: 'free' }
+
+    res.json({
+      message: 'Login berhasil',
+      session: data.session,
+      user: data.user,
+      profile
+    })
+  } catch (err) {
+    res.status(400).json({ message: err.message })
   }
-
-  const { data, error } = await createAuthClient().auth.signInWithPassword({
-    email,
-    password,
-  })
-
-  if (error?.code === 'email_not_confirmed') {
-    return res.status(403).json({ message: 'Email belum dikonfirmasi' })
-  }
-
-  if (error || !data.session) {
-    return res.status(401).json({ message: 'Email atau password salah' })
-  }
-
-  const profile = await getProfile(data.user.id)
-
-  return res.json({ session: toSession(data.session), profile })
 })
 
+// Refresh Token
 router.post('/refresh', async (req, res) => {
-  const refreshToken = String(req.body?.refreshToken || '')
+  try {
+    const { refreshToken } = req.body
+    if (!refreshToken) throw new Error('Refresh token diperlukan')
 
-  if (!refreshToken) {
-    return res.status(400).json({ message: 'refreshToken wajib diisi' })
+    const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken })
+    if (error) throw error
+
+    res.json({ session: data.session })
+  } catch (err) {
+    res.status(401).json({ message: err.message })
   }
-
-  const { data, error } = await createAuthClient().auth.refreshSession({
-    refresh_token: refreshToken,
-  })
-
-  if (error || !data.session) {
-    return res.status(401).json({ message: 'Sesi berakhir, silakan login kembali' })
-  }
-
-  return res.json({ session: toSession(data.session) })
 })
 
-router.get('/me', requireAuth, (req, res) => {
-  res.json({ profile: toProfile(req.profile) })
-})
+// Get Me
+router.get('/me', requireAuth, async (req, res) => {
+  try {
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', req.user.id)
+      .maybeSingle()
 
-router.post('/logout', requireAuth, async (req, res) => {
-  await supabase.auth.admin.signOut(req.token)
+    const profile = profileData ? toProfile(profileData) : { id: req.user.id, plan_id: 'free' }
 
-  res.json({ message: 'Berhasil keluar' })
+    res.json({ user: req.user, profile })
+  } catch (err) {
+    res.status(400).json({ message: err.message })
+  }
 })
 
 export default router
+EOF
