@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 
 node_modules/
+
+# Frontend environment files
+frontend-app/.env
+frontend-app/.env.*
