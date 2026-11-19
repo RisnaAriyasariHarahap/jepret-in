@@ -7,6 +7,7 @@ import AdminApp from './admin/AdminApp.jsx'
 import CustomEventPage from './pages/CustomEventPage.jsx'
 import MyEventsPage from './pages/MyEventsPage.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
+import TransactionHistoryPage from './pages/TransactionHistoryPage.jsx'
 
 const currentPath = window.location.pathname.replace(/\/+$/, '') || '/'
 
@@ -15,11 +16,12 @@ const isAdminRoute =
 
 const isCustomEventRoute = currentPath === '/form-custom-event'
 const isMyEventsRoute = currentPath === '/event-saya'
-
+const isTransactionHistoryRoute = currentPath === '/riwayat-transaksi'
 function renderPage() {
   if (isAdminRoute) return <AdminApp />
   if (isCustomEventRoute) return <CustomEventPage />
   if (isMyEventsRoute) return <MyEventsPage />
+  if (isTransactionHistoryRoute) return <TransactionHistoryPage />
   return <App />
 }
 

@@ -122,23 +122,53 @@ router.post('/', requireAuth, async (req, res) => {
 router.get('/me', requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from('transactions')
-    .select('order_id, plan_id, gross_amount, status, payment_type, created_at, paid_at')
+    .select(
+      'order_id, plan_id, custom_event_id, gross_amount, status, payment_type, created_at, paid_at'
+    )
     .eq('user_id', req.profile.id)
     .order('created_at', { ascending: false })
     .limit(50)
 
   if (error) throw error
 
+  const eventIds = [...new Set(data.map((i) => i.custom_event_id).filter(Boolean))]
+  const planIds = [...new Set(data.map((i) => i.plan_id).filter(Boolean))]
+
+  const [eventsResult, plansResult] = await Promise.all([
+    eventIds.length
+      ? supabase.from('custom_events').select('id, event_name').in('id', eventIds)
+      : { data: [], error: null },
+    planIds.length
+      ? supabase.from('plans').select('id, name, duration_days').in('id', planIds)
+      : { data: [], error: null },
+  ])
+
+  if (eventsResult.error) throw eventsResult.error
+  if (plansResult.error) throw plansResult.error
+
+  const eventNames = new Map(eventsResult.data.map((e) => [e.id, e.event_name]))
+  const plans = new Map(plansResult.data.map((p) => [p.id, p]))
+
   res.json({
-    data: data.map((item) => ({
-      orderId: item.order_id,
-      planId: item.plan_id,
-      amount: item.gross_amount,
-      status: item.status,
-      paymentType: item.payment_type,
-      createdAt: item.created_at,
-      paidAt: item.paid_at,
-    })),
+    data: data.map((item) => {
+      const isEvent = Boolean(item.custom_event_id)
+      const plan = plans.get(item.plan_id)
+
+      return {
+        orderId: item.order_id,
+        type: isEvent ? 'event' : 'premium',
+        title: isEvent
+          ? `Custom Event: ${eventNames.get(item.custom_event_id) ?? 'Event'}`
+          : `Jepret.in ${plan?.name ?? 'Premium'} (${plan?.duration_days ?? 30} hari)`,
+        planId: item.plan_id,
+        customEventId: item.custom_event_id,
+        amount: item.gross_amount,
+        status: item.status,
+        paymentType: item.payment_type,
+        createdAt: item.created_at,
+        paidAt: item.paid_at,
+      }
+    }),
   })
 })
 
