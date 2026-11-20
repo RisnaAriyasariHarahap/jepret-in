@@ -4036,7 +4036,7 @@ nav .brand,
   cursor: pointer;
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1700px) {
   .nav-auth span {
     display: none;
   }
@@ -4309,7 +4309,7 @@ nav .brand,
   cursor: pointer;
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1500px) {
   .navbar {
     min-height: 70px;
     flex-wrap: wrap;
@@ -4368,5 +4368,38 @@ nav .brand,
   .navbar.is-open .nav-actions > .nav-auth-button {
     flex: 1 1 140px;
     min-height: 44px;
+  }
+}
+
+/* ===== NAVBAR DESKTOP: dirapatkan supaya muat di layar 1501px ke atas ===== */
+@media (min-width: 1501px) {
+  .navbar {
+    gap: 14px;
+    padding-right: 4%;
+    padding-left: 4%;
+  }
+
+  .navbar .brand {
+    font-size: 24px !important;
+  }
+
+  .navbar .nav-links {
+    gap: 2px;
+  }
+
+  .navbar .nav-links a {
+    padding: 8px 12px !important;
+    font-size: 14px !important;
+    white-space: nowrap;
+  }
+
+  .navbar .nav-actions {
+    gap: 10px;
+  }
+
+  .navbar .nav-auth-button,
+  .navbar .nav-button {
+    font-size: 14px !important;
+    white-space: nowrap;
   }
 }

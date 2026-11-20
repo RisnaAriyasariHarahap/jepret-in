@@ -11,6 +11,7 @@ import transactionsRouter from './routes/transactions.js'
 import midtransRouter from './routes/midtrans.js'
 import eventRatesRouter from './routes/eventRates.js'
 import adminEventsRouter from './routes/adminEvents.js'
+import adminTemplatesRouter from './routes/adminTemplates.js'
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -38,6 +39,7 @@ app.use('/api/auth', authRouter)
 app.use('/api/admin/custom-events', adminEventsRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/custom-events', customEventsRouter)
+app.use('/api/admin/templates', adminTemplatesRouter)
 app.use('/api/event-rates', eventRatesRouter)
 app.use('/api/plans', plansRouter)
 app.use('/api/transactions', transactionsRouter)

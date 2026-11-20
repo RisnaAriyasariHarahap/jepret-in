@@ -31,6 +31,12 @@ const DEFAULT_STATE = {
   cornerTl: 'bow', cornerBr: 'heart', cornerColor: '#ed829d',
 }
 
+// Harus sama dengan CATEGORIES di backend/src/routes/adminTemplates.js
+export const TEMPLATE_CATEGORIES = [
+  'Birthday', 'Graduation', 'Friendship', 'Couple',
+  'Wedding', 'Travel', 'Minimalist', 'Lainnya',
+]
+
 const PRESETS = [
   {
     label: 'Wedding',
@@ -154,10 +160,25 @@ function fromTemplate(template) {
   }
 }
 
-export default function EventTemplateEditor({ event, onClose }) {
-  const [state, setState] = useState({ ...DEFAULT_STATE, name: event.eventName })
-  const [loading, setLoading] = useState(true)
-  const [hasTemplate, setHasTemplate] = useState(false)
+// Dua mode:
+// - event diisi  -> template khusus event milik pelanggan (perilaku lama)
+// - event kosong -> template umum; template diisi = ubah, kosong = buat baru
+export default function EventTemplateEditor({ event = null, template = null, onClose, onSaved }) {
+  const isEventMode = Boolean(event)
+  const [state, setState] = useState(() => {
+    if (isEventMode) return { ...DEFAULT_STATE, name: event.eventName }
+    if (template) return fromTemplate(template)
+
+    return { ...DEFAULT_STATE, tag: 'JEPRET.IN' }
+  })
+  const [meta, setMeta] = useState({
+    category: template?.category ?? 'Birthday',
+    description: template?.description ?? '',
+    isPremium: template?.isPremium ?? false,
+    isActive: template?.isActive ?? true,
+  })
+  const [loading, setLoading] = useState(isEventMode)
+  const [hasTemplate, setHasTemplate] = useState(Boolean(template))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -177,7 +198,14 @@ export default function EventTemplateEditor({ event, onClose }) {
     return false
   }
 
+  function setMetaField(key, value) {
+    setMeta((current) => ({ ...current, [key]: value }))
+    setNotice('')
+  }
+
   useEffect(() => {
+    if (!event) return undefined
+
     let cancelled = false
 
     async function loadTemplate() {
@@ -204,7 +232,7 @@ export default function EventTemplateEditor({ event, onClose }) {
     return () => {
       cancelled = true
     }
-  }, [event.id])
+  }, [event])
 
   const payload = useMemo(() => toPayload(state), [state])
 
@@ -250,6 +278,19 @@ export default function EventTemplateEditor({ event, onClose }) {
     setNotice('')
 
     try {
+      if (!isEventMode) {
+        const result = await apiFetch(
+          template ? `/api/admin/templates/${template.id}` : '/api/admin/templates',
+          {
+            method: template ? 'PUT' : 'POST',
+            body: JSON.stringify({ ...payload, ...meta }),
+          }
+        )
+
+        onSaved?.(result.data, template ? 'Template diperbarui.' : 'Template baru dibuat.')
+        return
+      }
+
       const result = await apiFetch(`/api/admin/custom-events/${event.id}/template`, {
         method: 'PUT',
         body: JSON.stringify(payload),
@@ -278,12 +319,18 @@ export default function EventTemplateEditor({ event, onClose }) {
       <section className="admin-template-modal admin-tpl-editor" role="dialog" aria-modal="true" aria-labelledby="admin-tpl-editor-title">
         <div className="admin-template-modal-header">
           <div>
-            <span className="admin-eyebrow">TEMPLATE EVENT</span>
-            <h2 id="admin-tpl-editor-title">{hasTemplate ? 'Ubah template' : 'Buat template'}: {event.eventName}</h2>
-            <p>
-              Pemilik: {event.name} ({event.email}). Aktif {formatDateTime(new Date(event.startsAt))} sampai{' '}
-              {formatDateTime(new Date(event.endsAt))}.
-            </p>
+            <span className="admin-eyebrow">{isEventMode ? 'TEMPLATE EVENT' : 'TEMPLATE UMUM'}</span>
+            <h2 id="admin-tpl-editor-title">
+              {hasTemplate ? 'Ubah template' : 'Buat template'}: {isEventMode ? event.eventName : state.name || 'Baru'}
+            </h2>
+            {isEventMode ? (
+              <p>
+                Pemilik: {event.name} ({event.email}). Aktif {formatDateTime(new Date(event.startsAt))} sampai{' '}
+                {formatDateTime(new Date(event.endsAt))}.
+              </p>
+            ) : (
+              <p>Template ini tampil untuk semua pengunjung di halaman Templates.</p>
+            )}
           </div>
           <button type="button" className="admin-template-close" onClick={onClose} aria-label="Tutup">×</button>
         </div>
@@ -299,6 +346,24 @@ export default function EventTemplateEditor({ event, onClose }) {
                   <button key={preset.label} type="button" onClick={() => applyPreset(preset)}>{preset.label}</button>
                 ))}
               </div>
+
+              {!isEventMode && (
+                <fieldset>
+                  <legend>Pengaturan template</legend>
+                  <label>Kategori
+                    <select value={meta.category} onChange={(e) => setMetaField('category', e.target.value)}>
+                      {TEMPLATE_CATEGORIES.map((item) => <option key={item} value={item}>{item}</option>)}
+                    </select>
+                  </label>
+                  <label>Deskripsi singkat
+                    <input type="text" maxLength={120} value={meta.description} onChange={(e) => setMetaField('description', e.target.value)} />
+                  </label>
+                  <div className="admin-tpl-row">
+                    <label><input type="checkbox" checked={meta.isPremium} onChange={(e) => setMetaField('isPremium', e.target.checked)} /> Khusus Premium</label>
+                    <label><input type="checkbox" checked={meta.isActive} onChange={(e) => setMetaField('isActive', e.target.checked)} /> Tampilkan di website</label>
+                  </div>
+                </fieldset>
+              )}
 
               <fieldset>
                 <legend>Teks</legend>

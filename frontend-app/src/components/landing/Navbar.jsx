@@ -38,7 +38,7 @@ export default function Navbar({ onStart }) {
         <a href="/#templates">Templates</a>
         <a href="/form-custom-event">Custom Event</a>
         {isLoggedIn && <a href="/event-saya">Event Saya</a>}
-        {isLoggedIn && <a href="/riwayat-transaksi">Riwayat Transaksi</a>}
+        {isLoggedIn && <a href="/riwayat-transaksi">Riwayat</a>}
         <a href="/#pricing">Pricing</a>
       </div>
 
