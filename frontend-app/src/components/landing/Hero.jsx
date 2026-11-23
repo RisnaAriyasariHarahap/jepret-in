@@ -1,7 +1,18 @@
+import { useAuth } from '../../context/AuthContext.jsx'
+
 export default function Hero({ onStart, onScrollToTemplates }) {
+  const { profile, isLoggedIn } = useAuth()
+  const firstName = profile?.fullName?.split(' ')[0] || 'Kamu'
+
   return (
     <section className="hero" id="home">
       <div className="hero-content">
+        {isLoggedIn && (
+          <h1 style={{ fontSize: 'clamp(28px, 3.8vw, 48px)' }}>
+            Halo, <span>{firstName}</span>!{profile?.isPremium ? '' : ''}
+          </h1>
+        )}
+
         <p className="eyebrow">
           <span className="dot" />
           YOUR LITTLE PHOTO MOMENT

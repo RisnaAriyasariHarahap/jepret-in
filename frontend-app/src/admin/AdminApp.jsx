@@ -4,11 +4,17 @@ import { apiFetch, getSession, saveSession, clearSession } from '../api.js'
 import { formatDateTime, formatRupiah } from '../utils/eventPricing.js'
 import EventTemplateEditor from './EventTemplateEditor.jsx'
 import TemplatesPage from './TemplatesPage.jsx'
+import DashboardPage from './DashboardPage.jsx'
+import TransactionsPage from './TransactionsPage.jsx'
+import CustomersPage from './CustomersPage.jsx'
+import PasswordInput from '../components/PasswordInput.jsx'
 
 const navigation = [
   { id: 'dashboard', label: 'Dashboard', icon: '▦' },
   { id: 'templates', label: 'Kelola Template', icon: '▧' },
   { id: 'events', label: 'Permintaan Event', icon: '▤' },
+  { id: 'transactions', label: 'Transaksi', icon: '▥' },
+  { id: 'customers', label: 'Pelanggan', icon: '◉' },
 ]
 
 const pageInfo = {
@@ -27,6 +33,16 @@ const pageInfo = {
     title: 'Permintaan Event',
     description: 'Tinjau permintaan layanan photobooth untuk acara.',
   },
+  transactions: {
+    eyebrow: 'PAYMENT',
+    title: 'Transaksi',
+    description: 'Pantau pembayaran Premium dan Custom Event.',
+  },
+  customers: {
+    eyebrow: 'CUSTOMERS',
+    title: 'Pelanggan',
+    description: 'Lihat akun pelanggan dan status paketnya.',
+  }
 }
 
 function EmptyState({ icon, title, description }) {
@@ -36,133 +52,6 @@ function EmptyState({ icon, title, description }) {
       <h3>{title}</h3>
       <p>{description}</p>
     </div>
-  )
-}
-
-function DashboardPage({ navigate }) {
-  return (
-    <>
-      <section className="admin-welcome">
-        <div className="admin-welcome-copy">
-          <span className="admin-eyebrow">YOUR CREATIVE SPACE</span>
-          <h2>Setiap jepretan punya cerita.</h2>
-          <p>
-            Selamat datang di ruang pengelolaan Jepret.in.
-            Siapkan pengalaman photobooth yang berkesan untuk setiap momen.
-          </p>
-          <button
-            type="button"
-            className="admin-button admin-button-light"
-            onClick={() => navigate('templates')}
-          >
-            Jelajahi template <span aria-hidden="true">↗</span>
-          </button>
-        </div>
-
-        <div className="admin-welcome-art" aria-hidden="true">
-          <div className="admin-art-sun" />
-          <div className="admin-art-card admin-art-card-one">
-            <span>J</span>
-            <small>YOUR MOMENT</small>
-          </div>
-          <div className="admin-art-card admin-art-card-two"><span>+</span></div>
-          <div className="admin-art-caption">MAKE IT MEMORABLE</div>
-        </div>
-      </section>
-
-      <div className="admin-section-heading">
-        <div>
-          <span className="admin-eyebrow">QUICK OVERVIEW</span>
-          <h2>Ringkasan platform</h2>
-        </div>
-        <span className="admin-status">
-          <span className="admin-status-dot" />
-          Menunggu koneksi backend
-        </span>
-      </div>
-
-      <section className="admin-stat-grid">
-        <article className="admin-stat-card">
-          <div className="admin-stat-top">
-            <span className="admin-stat-icon teal" aria-hidden="true">▧</span>
-            <span className="admin-stat-label">KONTEN</span>
-          </div>
-          <h3>Template</h3>
-          <p>Jumlah template akan tampil setelah data tersedia.</p>
-          <button type="button" className="admin-text-link" onClick={() => navigate('templates')}>
-            Kelola template <span aria-hidden="true">→</span>
-          </button>
-        </article>
-
-        <article className="admin-stat-card">
-          <div className="admin-stat-top">
-            <span className="admin-stat-icon coral" aria-hidden="true">▤</span>
-            <span className="admin-stat-label">LAYANAN</span>
-          </div>
-          <h3>Permintaan event</h3>
-          <p>Data permintaan akan tampil setelah backend terhubung.</p>
-          <button type="button" className="admin-text-link" onClick={() => navigate('events')}>
-            Lihat permintaan <span aria-hidden="true">→</span>
-          </button>
-        </article>
-
-        <article className="admin-stat-card">
-          <div className="admin-stat-top">
-            <span className="admin-stat-icon navy" aria-hidden="true">↗</span>
-            <span className="admin-stat-label">AKTIVITAS</span>
-          </div>
-          <h3>Sesi photobooth</h3>
-          <p>Ringkasan sesi foto belum tersedia.</p>
-          <span className="admin-muted-note">Menunggu integrasi data</span>
-        </article>
-      </section>
-
-      <section className="admin-lower-grid">
-        <article className="admin-panel admin-getting-started">
-          <div className="admin-panel-heading">
-            <div>
-              <span className="admin-eyebrow">GET STARTED</span>
-              <h2>Siapkan ruang kreatifmu</h2>
-            </div>
-            <span className="admin-heading-icon" aria-hidden="true">✳</span>
-          </div>
-
-          <div className="admin-task-list">
-            <button type="button" className="admin-task" onClick={() => navigate('templates')}>
-              <span className="admin-task-number">01</span>
-              <span className="admin-task-copy">
-                <strong>Periksa koleksi template</strong>
-                <small>Siapkan pengelolaan desain photobooth.</small>
-              </span>
-              <span className="admin-task-arrow" aria-hidden="true">↗</span>
-            </button>
-
-            <button type="button" className="admin-task" onClick={() => navigate('events')}>
-              <span className="admin-task-number">02</span>
-              <span className="admin-task-copy">
-                <strong>Tinjau permintaan event</strong>
-                <small>Siapkan alur pengelolaan acara.</small>
-              </span>
-              <span className="admin-task-arrow" aria-hidden="true">↗</span>
-            </button>
-          </div>
-        </article>
-
-        <article className="admin-panel admin-connection-panel">
-          <span className="admin-eyebrow">SYSTEM STATUS</span>
-          <div className="admin-connection-symbol" aria-hidden="true">⌁</div>
-          <h2>Admin sedang disiapkan</h2>
-          <p>
-            Tampilan admin sudah bisa dikembangkan. Data nyata akan tersedia
-            setelah layanan backend dihubungkan.
-          </p>
-          <div className="admin-connection-footer">
-            <span className="admin-status-dot" />
-            <span>Frontend siap dikembangkan</span>
-          </div>
-        </article>
-      </section>
-    </>
   )
 }
 
@@ -620,17 +509,6 @@ function AdminLoginPage() {
 
   return (
         <main className="admin-login-page">
-        <div className="admin-welcome-art" aria-hidden="true">
-    <div className="admin-art-sun" />
-    <div className="admin-art-card admin-art-card-one">
-        <span>J</span>
-        <small>YOUR MOMENT</small>
-    </div>
-    <div className="admin-art-card admin-art-card-two">
-        <span>+</span>
-    </div>
-    <div className="admin-art-caption">MAKE IT MEMORABLE</div>
-    </div>
       <section
         className="admin-login-card"
         aria-labelledby="admin-login-title"
@@ -675,9 +553,8 @@ function AdminLoginPage() {
 
           <div className="admin-login-field">
             <label htmlFor="admin-login-password">Password</label>
-            <input
+            <PasswordInput
               id="admin-login-password"
-              type="password"
               autoComplete="current-password"
               placeholder="Masukkan password"
               value={password}
@@ -719,6 +596,8 @@ export default function AdminApp() {
 
     if (path === '/admin/templates') return 'templates'
     if (path === '/admin/events') return 'events'
+    if (path === '/admin/transactions') return 'transactions'
+    if (path === '/admin/customers') return 'customers'
 
         return 'dashboard'
   }
@@ -788,6 +667,8 @@ export default function AdminApp() {
       dashboard: '/admin',
       templates: '/admin/templates',
       events: '/admin/events',
+      transactions: '/admin/transactions',
+      customers: '/admin/customers',
     }
 
     if (!paths[page]) return
@@ -911,6 +792,8 @@ export default function AdminApp() {
           {activePage === 'dashboard' && <DashboardPage navigate={navigate} />}
           {activePage === 'templates' && <TemplatesPage />}
           {activePage === 'events' && <EventsPage />}
+          {activePage === 'transactions' && <TransactionsPage />}
+          {activePage === 'customers' && <CustomersPage />}
         </main>
       </div>
     </div>

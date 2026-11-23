@@ -40,8 +40,8 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ message: 'Format email tidak valid' })
   }
 
-  if (password.length < 8) {
-    return res.status(400).json({ message: 'Password minimal 8 karakter' })
+  if (password.length > 72) {
+    return res.status(400).json({ message: 'Password maksimal 72 karakter' })
   }
 
   const { data, error } = await createAuthClient().auth.signUp({

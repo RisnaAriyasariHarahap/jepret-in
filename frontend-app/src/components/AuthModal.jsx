@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import PasswordInput from './PasswordInput.jsx'
 
 export default function AuthModal({
   mode,
@@ -44,8 +45,13 @@ export default function AuthModal({
 
     try {
       if (isLogin) {
-        await onLogin(email, password)
+        const loggedInProfile = await onLogin(email, password)
+
         onClose()
+        // Admin langsung diarahkan ke dashboard setelah login dari halaman utama
+        if (loggedInProfile?.role === 'admin') {
+          window.location.href = '/admin'
+        }
       } else {
         const result = await onRegister(String(data.get('fullName') || ''), email, password)
 
@@ -134,10 +140,9 @@ export default function AuthModal({
 
           <div className="checkout-field">
             <label htmlFor="auth-password">Password</label>
-            <input
+            <PasswordInput
               id="auth-password"
               name="password"
-              type="password"
               placeholder={isLogin ? 'Masukkan password' : 'Minimal 8 karakter'}
               autoComplete={isLogin ? 'current-password' : 'new-password'}
               minLength={isLogin ? undefined : 8}

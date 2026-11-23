@@ -146,7 +146,8 @@ export default function MyEventsPage() {
 
                   {item.status === 'paid' && (
                     <p className="my-event-line">
-                      Terima kasih! Template eventmu akan muncul di halaman Templates setelah admin selesai menyiapkannya.
+                      Terima kasih! Admin akan menyiapkan template eventmu. Template akan muncul di halaman Templates
+                      {item.startsAt ? <> mulai {formatDateTime(new Date(item.startsAt))}</> : ' saat acara dimulai'}.
                     </p>
                   )}
 

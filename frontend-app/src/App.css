@@ -4403,3 +4403,35 @@ nav .brand,
     white-space: nowrap;
   }
 }
+
+/* Dashboard, transaksi, pelanggan */
+.admin-tpl-badge.is-warn { color: #8a5a00; background: #fdf0cf; }
+.admin-tpl-badge.is-bad { color: #b3374f; background: #fde6ea; }
+.admin-break { word-break: break-all; }
+.admin-stat-value { margin: 6px 0 4px; font-size: 22px; line-height: 1.2; color: var(--admin-ink); }
+.admin-tpl-refresh { min-height: 34px; padding: 0 14px; border: 1px solid var(--admin-border); border-radius: 999px; color: var(--admin-ink); background: #fff; font-size: 11px; font-weight: 700; cursor: pointer; }
+.admin-tpl-refresh:disabled { opacity: .6; cursor: wait; }
+
+.admin-bars { display: flex; align-items: flex-end; gap: 12px; height: 190px; padding-top: 8px; }
+.admin-bar { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; gap: 6px; }
+.admin-bar span { display: block; width: 100%; max-width: 44px; border-radius: 8px 8px 3px 3px; background: linear-gradient(180deg, #f08aa7, #f6b9c9); }
+.admin-bar em { font-size: 10px; font-style: normal; font-weight: 700; color: var(--admin-ink); }
+.admin-bar small { font-size: 10px; color: var(--admin-muted); }
+
+.admin-recent { display: grid; gap: 4px; margin: 0 0 12px; padding: 0; list-style: none; }
+.admin-recent li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--admin-border); }
+.admin-recent strong { display: block; font-size: 12px; color: var(--admin-ink); }
+.admin-recent small { font-size: 10px; color: var(--admin-muted); }
+
+.admin-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; font-size: 11px; color: var(--admin-muted); }
+.admin-pager > div { display: flex; gap: 8px; }
+.admin-pager button { min-height: 32px; padding: 0 12px; border: 1px solid var(--admin-border); border-radius: 8px; color: var(--admin-ink); background: #fff; font-size: 11px; font-weight: 700; cursor: pointer; }
+.admin-pager button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Sapaan pengguna di atas label hero */
+.hero-greeting {
+  margin: 0 0 14px;
+  color: #d7668b;
+  font-size: 18px;
+  font-weight: 700;
+}

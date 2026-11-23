@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext.jsx'
 
-export default function Navbar({ onStart }) {
+export default function Navbar() {
   const { profile, isLoggedIn, openAuth, logout } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const firstName = profile?.fullName?.split(' ')[0] || 'Kamu'
+  const isAdmin = profile?.role === 'admin'
 
   function closeMenu() {
     setMenuOpen(false)
@@ -37,44 +37,49 @@ export default function Navbar({ onStart }) {
         <a href="/#cara-kerja">Cara Kerja</a>
         <a href="/#templates">Templates</a>
         <a href="/form-custom-event">Custom Event</a>
-        {isLoggedIn && <a href="/event-saya">Event Saya</a>}
-        {isLoggedIn && <a href="/riwayat-transaksi">Riwayat</a>}
+        {isAdmin && <a href="/admin">Dashboard Admin</a>}
+        {isLoggedIn && !isAdmin && <a href="/event-saya">Event Saya</a>}
+        {isLoggedIn && !isAdmin && <a href="/riwayat-transaksi">Riwayat</a>}
         <a href="/#pricing">Pricing</a>
       </div>
 
       <div className="nav-actions">
         {isLoggedIn ? (
-          <div className="nav-auth">
-            <span>
-              Halo, {firstName}
-              {profile?.isPremium ? ' ✨' : ''}
-            </span>
-            <button type="button" className="nav-auth-button" onClick={logout}>
-              Keluar
-            </button>
-          </div>
-        ) : (
           <button
             type="button"
-            className="nav-auth-button"
+            className="nav-button"
             onClick={() => {
               closeMenu()
-              openAuth('login')
+              logout()
             }}
           >
-            Masuk
+            Keluar
           </button>
-        )}
+        ) : (
+          <>
+            <button
+              type="button"
+              className="nav-auth-button"
+              onClick={() => {
+                closeMenu()
+                openAuth('login')
+              }}
+            >
+              Masuk
+            </button>
 
-        <button
-          className="nav-button"
-          onClick={() => {
-            closeMenu()
-            onStart()
-          }}
-        >
-          Mulai Jepret ♡
-        </button>
+            <button
+              type="button"
+              className="nav-button"
+              onClick={() => {
+                closeMenu()
+                openAuth('register')
+              }}
+            >
+              Daftar gratis
+            </button>
+          </>
+        )}
       </div>
     </nav>
   )

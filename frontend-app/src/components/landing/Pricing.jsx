@@ -50,10 +50,14 @@ export default function Pricing() {
     const result = await apiFetch(`/api/transactions/${orderId}/sync`, {
       method: 'POST',
     })
+    const syncedProfile = result.data.profile
 
-    updateProfile(result.data.profile)
+    if (syncedProfile) updateProfile(syncedProfile)
 
-    return result.data.status
+    return {
+      status: result.data.status,
+      isPremium: Boolean(syncedProfile?.isPremium),
+    }
   }
 
   async function handleBuyPremium() {
@@ -76,10 +80,12 @@ export default function Pricing() {
 
       await payWithSnap({ token, snapJsUrl, clientKey })
 
-      const status = await checkStatus(orderId)
+      const { status, isPremium } = await checkStatus(orderId)
 
-      if (status === 'settlement') {
+      if (status === 'settlement' && isPremium) {
         setMessage('Pembayaran berhasil! Akun kamu sekarang Premium. ✨')
+      } else if (status === 'settlement') {
+        setMessage('Pembayaran sudah diterima, tetapi status Premium belum aktif. Muat ulang halaman, atau hubungi admin jika masih sama.')
       } else if (status === 'pending') {
         setMessage(
           'Pembayaran belum selesai. Selesaikan pembayaran, lalu klik tombol Premium lagi untuk memeriksa status.'

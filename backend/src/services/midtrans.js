@@ -9,6 +9,7 @@ function getConfig() {
 
     const error = new Error('Layanan pembayaran belum dikonfigurasi')
     error.status = 503
+    error.expose = true
     throw error
   }
 
@@ -59,6 +60,7 @@ export async function createSnapTransaction(payload) {
 
     const error = new Error('Gagal membuat transaksi pembayaran')
     error.status = 502
+    error.expose = true
     throw error
   }
 
@@ -89,6 +91,7 @@ export async function getTransactionStatus(orderId) {
 
     const error = new Error('Gagal memeriksa status pembayaran')
     error.status = 502
+    error.expose = true
     throw error
   }
 
@@ -105,11 +108,12 @@ export function verifyNotificationSignature(notification) {
     )
     .digest('hex')
 
-  const given = String(notification.signature_key || '')
+  const expectedBuffer = Buffer.from(expected)
+  const givenBuffer = Buffer.from(String(notification.signature_key || ''))
 
-  if (expected.length !== given.length) return false
+  if (expectedBuffer.length !== givenBuffer.length) return false
 
-  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(given))
+  return crypto.timingSafeEqual(expectedBuffer, givenBuffer)
 }
 
 export function mapTransactionStatus(transactionStatus, fraudStatus) {

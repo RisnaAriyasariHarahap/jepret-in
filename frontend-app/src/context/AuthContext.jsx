@@ -46,6 +46,8 @@ export function AuthProvider({ children }) {
 
     saveSession({ ...result.session, profile: result.profile })
     setProfile(result.profile)
+
+    return result.profile
   }, [])
 
   const register = useCallback(async (fullName, email, password) => {
